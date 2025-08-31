@@ -1,315 +1,207 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Periodic Table - MyAtoms</title>
-  <link href="https://fonts.googleapis.com/css2?family=Alsina&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <title>Hydrogen - My Atoms</title>
+
+  <!-- NOTE: removed Google Fonts link (some networks block fonts.googleapis.com causing MIME errors).
+       If you self-host the Alsina font later, add an @font-face block here. -->
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    :root{
-      --cell: 60px;
-      --gap: 5px;
+    html,body { height:100%; margin:0; background:#000; color:#fff; font-family: Arial, sans-serif; }
+    #viewer { position:absolute; top:0; left:0; width:100%; height:calc(100% - 120px); background:black; }
+    #info {
+      position:absolute; left:0; bottom:0; width:100%; height:120px;
+      background:#111; color:#fff; padding:12px; box-sizing:border-box;
+      display:flex; align-items:center; gap:14px; font-size:16px;
     }
-
-    html,body{
-      height:100%;
-      margin:0;
-      background:#000000; /* pure black */
-      color:white;
-      font-family: Arial, sans-serif;
+    .toggle { display:flex; align-items:center; gap:8px; }
+    input[type="checkbox"]{ transform:scale(1.05); }
+    #error {
+      position: absolute; top:12px; left:12px; z-index:9999;
+      background: rgba(255,0,0,0.08); color:#ffdddd; padding:8px 10px; border-radius:6px; display:none;
     }
-
-    .wrap{
-      padding:18px;
-      box-sizing:border-box;
-      max-width:1300px;
-      margin:0 auto;
-    }
-
-    h1{
-      text-align:center;
-      margin: 6px 0 18px 0;
-      font-family:'Alsina', sans-serif;
-      font-weight:700;
-    }
-
-    /* main periodic table grid (18 columns) */
-    .table{
-      display:grid;
-      grid-template-columns: repeat(18, var(--cell));
-      gap: var(--gap);
-      justify-content:center;
-    }
-
-    .element{
-      width:var(--cell);
-      height:var(--cell);
-      box-sizing:border-box;
-      border-radius:6px;
-      display:flex;
-      flex-direction:column;
-      justify-content:flex-start;
-      align-items:center;
-      padding:4px;
-      cursor:default;
-      user-select:none;
-    }
-
-    .element a{ display:block; width:100%; height:100%; color:inherit; text-decoration:none; }
-
-    .atomic-number{
-      font-size:10px;
-      color:#ddd;
-      align-self:flex-start;
-    }
-    .symbol{
-      margin-top:4px;
-      font-size:18px;
-      font-weight:700;
-      font-family:'Alsina', sans-serif;
-    }
-
-    /* categories (colors) */
-    .alkali { background:#f44336; }        /* Li, Na, K... */
-    .alkaline { background:#ff9800; }      /* Be, Mg, Ca... */
-    .transition { background:#9e9e9e; }    /* transition metals */
-    .postmetal { background:#7f8c8d; }     /* post-transition metals */
-    .metalloid { background:#9c27b0; }     /* B, Si, Ge... */
-    .nonmetal { background:#4caf50; }      /* C, N, O, P, S... */
-    .halogen { background:#00bcd4; }       /* F, Cl, Br... */
-    .noble { background:#2196f3; }         /* He, Ne... */
-    .lanthanoid { background:#795548; }    /* lanthanides */
-    .actinoid { background:#607d8b; }      /* actinides */
-    .empty { background:transparent; }     /* gaps */
-
-    .legend{
-      margin-top:12px;
-      display:flex;
-      gap:12px;
-      flex-wrap:wrap;
-      justify-content:center;
-      font-size:13px;
-    }
-    .legend .item{
-      display:flex;
-      gap:8px;
-      align-items:center;
-    }
-    .swatch{
-      width:18px;
-      height:18px;
-      border-radius:4px;
-      display:inline-block;
-      vertical-align:middle;
-      border:1px solid rgba(255,255,255,0.06);
-    }
-
-    /* lanth/act rows placed beneath and aligned under column 3 */
-    .fblock-wrap{
-      margin-top:14px;
-    }
-    .fblock-title{
-      color:#ddd;
-      margin-left: calc((var(--cell) + var(--gap)) * 2);
-      font-size:13px;
-      margin-bottom:6px;
-    }
-    .fblock{
-      display:grid;
-      grid-template-columns: repeat(15, var(--cell));
-      gap: var(--gap);
-      margin-left: calc((var(--cell) + var(--gap)) * 2);
-      justify-content:flex-start;
-    }
-
-    /* small responsive tweaks */
-    @media (max-width: 920px){
-      :root{ --cell: 44px; }
-      .symbol{ font-size:14px; }
-      .atomic-number{ font-size:9px; }
-    }
-
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>Periodic Table of Elements</h1>
+  <div id="viewer" aria-hidden="false"></div>
 
-    <div class="table">
-      <!-- Period 1 -->
-      <div class="element"><a href="hydrogen.html"><div class="atomic-number">1</div><div class="symbol nonmetal">H</div></a></div>
-      <div class="element empty"></div><div class="element empty"></div><div class="element empty"></div>
-      <div class="element empty"></div><div class="element empty"></div><div class="element empty"></div>
-      <div class="element empty"></div><div class="element empty"></div><div class="element empty"></div>
-      <div class="element empty"></div><div class="element empty"></div><div class="element empty"></div>
-      <div class="element empty"></div><div class="element empty"></div><div class="element empty"></div>
-      <div class="element"><div class="atomic-number">2</div><div class="symbol noble">He</div></div>
-
-      <!-- Period 2 -->
-      <div class="element"><div class="atomic-number">3</div><div class="symbol alkali">Li</div></div>
-      <div class="element"><div class="atomic-number">4</div><div class="symbol alkaline">Be</div></div>
-      <div class="element empty"></div><div class="element empty"></div><div class="element empty"></div>
-      <div class="element empty"></div><div class="element empty"></div><div class="element empty"></div>
-      <div class="element"><div class="atomic-number">5</div><div class="symbol metalloid">B</div></div>
-      <div class="element"><div class="atomic-number">6</div><div class="symbol nonmetal">C</div></div>
-      <div class="element"><div class="atomic-number">7</div><div class="symbol nonmetal">N</div></div>
-      <div class="element"><div class="atomic-number">8</div><div class="symbol nonmetal">O</div></div>
-      <div class="element"><div class="atomic-number">9</div><div class="symbol halogen">F</div></div>
-      <div class="element"><div class="atomic-number">10</div><div class="symbol noble">Ne</div></div>
-
-      <!-- Period 3 -->
-      <div class="element"><div class="atomic-number">11</div><div class="symbol alkali">Na</div></div>
-      <div class="element"><div class="atomic-number">12</div><div class="symbol alkaline">Mg</div></div>
-      <div class="element empty"></div><div class="element empty"></div><div class="element empty"></div>
-      <div class="element empty"></div><div class="element empty"></div><div class="element empty"></div>
-      <div class="element"><div class="atomic-number">13</div><div class="symbol postmetal">Al</div></div>
-      <div class="element"><div class="atomic-number">14</div><div class="symbol metalloid">Si</div></div>
-      <div class="element"><div class="atomic-number">15</div><div class="symbol nonmetal">P</div></div>
-      <div class="element"><div class="atomic-number">16</div><div class="symbol nonmetal">S</div></div>
-      <div class="element"><div class="atomic-number">17</div><div class="symbol halogen">Cl</div></div>
-      <div class="element"><div class="atomic-number">18</div><div class="symbol noble">Ar</div></div>
-
-      <!-- Period 4 -->
-      <div class="element"><div class="atomic-number">19</div><div class="symbol alkali">K</div></div>
-      <div class="element"><div class="atomic-number">20</div><div class="symbol alkaline">Ca</div></div>
-      <div class="element"><div class="atomic-number">21</div><div class="symbol transition">Sc</div></div>
-      <div class="element"><div class="atomic-number">22</div><div class="symbol transition">Ti</div></div>
-      <div class="element"><div class="atomic-number">23</div><div class="symbol transition">V</div></div>
-      <div class="element"><div class="atomic-number">24</div><div class="symbol transition">Cr</div></div>
-      <div class="element"><div class="atomic-number">25</div><div class="symbol transition">Mn</div></div>
-      <div class="element"><div class="atomic-number">26</div><div class="symbol transition">Fe</div></div>
-      <div class="element"><div class="atomic-number">27</div><div class="symbol transition">Co</div></div>
-      <div class="element"><div class="atomic-number">28</div><div class="symbol transition">Ni</div></div>
-      <div class="element"><div class="atomic-number">29</div><div class="symbol transition">Cu</div></div>
-      <div class="element"><div class="atomic-number">30</div><div class="symbol transition">Zn</div></div>
-      <div class="element"><div class="atomic-number">31</div><div class="symbol postmetal">Ga</div></div>
-      <div class="element"><div class="atomic-number">32</div><div class="symbol metalloid">Ge</div></div>
-      <div class="element"><div class="atomic-number">33</div><div class="symbol metalloid">As</div></div>
-      <div class="element"><div class="atomic-number">34</div><div class="symbol nonmetal">Se</div></div>
-      <div class="element"><div class="atomic-number">35</div><div class="symbol halogen">Br</div></div>
-      <div class="element"><div class="atomic-number">36</div><div class="symbol noble">Kr</div></div>
-
-      <!-- Period 5 -->
-      <div class="element"><div class="atomic-number">37</div><div class="symbol alkali">Rb</div></div>
-      <div class="element"><div class="atomic-number">38</div><div class="symbol alkaline">Sr</div></div>
-      <div class="element"><div class="atomic-number">39</div><div class="symbol transition">Y</div></div>
-      <div class="element"><div class="atomic-number">40</div><div class="symbol transition">Zr</div></div>
-      <div class="element"><div class="atomic-number">41</div><div class="symbol transition">Nb</div></div>
-      <div class="element"><div class="atomic-number">42</div><div class="symbol transition">Mo</div></div>
-      <div class="element"><div class="atomic-number">43</div><div class="symbol transition">Tc</div></div>
-      <div class="element"><div class="atomic-number">44</div><div class="symbol transition">Ru</div></div>
-      <div class="element"><div class="atomic-number">45</div><div class="symbol transition">Rh</div></div>
-      <div class="element"><div class="atomic-number">46</div><div class="symbol transition">Pd</div></div>
-      <div class="element"><div class="atomic-number">47</div><div class="symbol transition">Ag</div></div>
-      <div class="element"><div class="atomic-number">48</div><div class="symbol transition">Cd</div></div>
-      <div class="element"><div class="atomic-number">49</div><div class="symbol postmetal">In</div></div>
-      <div class="element"><div class="atomic-number">50</div><div class="symbol postmetal">Sn</div></div>
-      <div class="element"><div class="atomic-number">51</div><div class="symbol postmetal">Sb</div></div>
-      <div class="element"><div class="atomic-number">52</div><div class="symbol metalloid">Te</div></div>
-      <div class="element"><div class="atomic-number">53</div><div class="symbol halogen">I</div></div>
-      <div class="element"><div class="atomic-number">54</div><div class="symbol noble">Xe</div></div>
-
-      <!-- Period 6 -->
-      <div class="element"><div class="atomic-number">55</div><div class="symbol alkali">Cs</div></div>
-      <div class="element"><div class="atomic-number">56</div><div class="symbol alkaline">Ba</div></div>
-      <!-- La often appears in group 3 in main table (lanthanoid starts) -->
-      <div class="element"><div class="atomic-number">57</div><div class="symbol lanthanoid">La</div></div>
-      <div class="element"><div class="atomic-number">72</div><div class="symbol transition">Hf</div></div>
-      <div class="element"><div class="atomic-number">73</div><div class="symbol transition">Ta</div></div>
-      <div class="element"><div class="atomic-number">74</div><div class="symbol transition">W</div></div>
-      <div class="element"><div class="atomic-number">75</div><div class="symbol transition">Re</div></div>
-      <div class="element"><div class="atomic-number">76</div><div class="symbol transition">Os</div></div>
-      <div class="element"><div class="atomic-number">77</div><div class="symbol transition">Ir</div></div>
-      <div class="element"><div class="atomic-number">78</div><div class="symbol transition">Pt</div></div>
-      <div class="element"><div class="atomic-number">79</div><div class="symbol transition">Au</div></div>
-      <div class="element"><div class="atomic-number">80</div><div class="symbol transition">Hg</div></div>
-      <div class="element"><div class="atomic-number">81</div><div class="symbol postmetal">Tl</div></div>
-      <div class="element"><div class="atomic-number">82</div><div class="symbol postmetal">Pb</div></div>
-      <div class="element"><div class="atomic-number">83</div><div class="symbol postmetal">Bi</div></div>
-      <div class="element"><div class="atomic-number">84</div><div class="symbol metalloid">Po</div></div>
-      <div class="element"><div class="atomic-number">85</div><div class="symbol halogen">At</div></div>
-      <div class="element"><div class="atomic-number">86</div><div class="symbol noble">Rn</div></div>
-
-      <!-- Period 7 -->
-      <div class="element"><div class="atomic-number">87</div><div class="symbol alkali">Fr</div></div>
-      <div class="element"><div class="atomic-number">88</div><div class="symbol alkaline">Ra</div></div>
-      <!-- Ac appears in group 3 (actinoid start) -->
-      <div class="element"><div class="atomic-number">89</div><div class="symbol actinoid">Ac</div></div>
-      <div class="element"><div class="atomic-number">104</div><div class="symbol transition">Rf</div></div>
-      <div class="element"><div class="atomic-number">105</div><div class="symbol transition">Db</div></div>
-      <div class="element"><div class="atomic-number">106</div><div class="symbol transition">Sg</div></div>
-      <div class="element"><div class="atomic-number">107</div><div class="symbol transition">Bh</div></div>
-      <div class="element"><div class="atomic-number">108</div><div class="symbol transition">Hs</div></div>
-      <div class="element"><div class="atomic-number">109</div><div class="symbol transition">Mt</div></div>
-      <div class="element"><div class="atomic-number">110</div><div class="symbol transition">Ds</div></div>
-      <div class="element"><div class="atomic-number">111</div><div class="symbol transition">Rg</div></div>
-      <div class="element"><div class="atomic-number">112</div><div class="symbol transition">Cn</div></div>
-      <div class="element"><div class="atomic-number">113</div><div class="symbol postmetal">Nh</div></div>
-      <div class="element"><div class="atomic-number">114</div><div class="symbol postmetal">Fl</div></div>
-      <div class="element"><div class="atomic-number">115</div><div class="symbol postmetal">Mc</div></div>
-      <div class="element"><div class="atomic-number">116</div><div class="symbol postmetal">Lv</div></div>
-      <div class="element"><div class="atomic-number">117</div><div class="symbol halogen">Ts</div></div>
-      <div class="element"><div class="atomic-number">118</div><div class="symbol noble">Og</div></div>
-    </div>
-
-    <!-- Lanthanides (57-71) -->
-    <div class="fblock-wrap">
-      <div class="fblock-title">Lanthanides</div>
-      <div class="fblock">
-        <div class="element lanthanoid"><div class="atomic-number">57</div><div class="symbol">La</div></div>
-        <div class="element lanthanoid"><div class="atomic-number">58</div><div class="symbol">Ce</div></div>
-        <div class="element lanthanoid"><div class="atomic-number">59</div><div class="symbol">Pr</div></div>
-        <div class="element lanthanoid"><div class="atomic-number">60</div><div class="symbol">Nd</div></div>
-        <div class="element lanthanoid"><div class="atomic-number">61</div><div class="symbol">Pm</div></div>
-        <div class="element lanthanoid"><div class="atomic-number">62</div><div class="symbol">Sm</div></div>
-        <div class="element lanthanoid"><div class="atomic-number">63</div><div class="symbol">Eu</div></div>
-        <div class="element lanthanoid"><div class="atomic-number">64</div><div class="symbol">Gd</div></div>
-        <div class="element lanthanoid"><div class="atomic-number">65</div><div class="symbol">Tb</div></div>
-        <div class="element lanthanoid"><div class="atomic-number">66</div><div class="symbol">Dy</div></div>
-        <div class="element lanthanoid"><div class="atomic-number">67</div><div class="symbol">Ho</div></div>
-        <div class="element lanthanoid"><div class="atomic-number">68</div><div class="symbol">Er</div></div>
-        <div class="element lanthanoid"><div class="atomic-number">69</div><div class="symbol">Tm</div></div>
-        <div class="element lanthanoid"><div class="atomic-number">70</div><div class="symbol">Yb</div></div>
-        <div class="element lanthanoid"><div class="atomic-number">71</div><div class="symbol">Lu</div></div>
-      </div>
-    </div>
-
-    <!-- Actinides (89-103) -->
-    <div class="fblock-wrap">
-      <div class="fblock-title">Actinides</div>
-      <div class="fblock">
-        <div class="element actinoid"><div class="atomic-number">89</div><div class="symbol">Ac</div></div>
-        <div class="element actinoid"><div class="atomic-number">90</div><div class="symbol">Th</div></div>
-        <div class="element actinoid"><div class="atomic-number">91</div><div class="symbol">Pa</div></div>
-        <div class="element actinoid"><div class="atomic-number">92</div><div class="symbol">U</div></div>
-        <div class="element actinoid"><div class="atomic-number">93</div><div class="symbol">Np</div></div>
-        <div class="element actinoid"><div class="atomic-number">94</div><div class="symbol">Pu</div></div>
-        <div class="element actinoid"><div class="atomic-number">95</div><div class="symbol">Am</div></div>
-        <div class="element actinoid"><div class="atomic-number">96</div><div class="symbol">Cm</div></div>
-        <div class="element actinoid"><div class="atomic-number">97</div><div class="symbol">Bk</div></div>
-        <div class="element actinoid"><div class="atomic-number">98</div><div class="symbol">Cf</div></div>
-        <div class="element actinoid"><div class="atomic-number">99</div><div class="symbol">Es</div></div>
-        <div class="element actinoid"><div class="atomic-number">100</div><div class="symbol">Fm</div></div>
-        <div class="element actinoid"><div class="atomic-number">101</div><div class="symbol">Md</div></div>
-        <div class="element actinoid"><div class="atomic-number">102</div><div class="symbol">No</div></div>
-        <div class="element actinoid"><div class="atomic-number">103</div><div class="symbol">Lr</div></div>
-      </div>
-    </div>
-
-    <div class="legend" aria-hidden="true">
-      <div class="item"><span class="swatch alkali"></span> Alkali</div>
-      <div class="item"><span class="swatch alkaline"></span> Alkaline earth</div>
-      <div class="item"><span class="swatch transition"></span> Transition</div>
-      <div class="item"><span class="swatch postmetal"></span> Post-transition</div>
-      <div class="item"><span class="swatch metalloid"></span> Metalloid</div>
-      <div class="item"><span class="swatch nonmetal"></span> Nonmetal</div>
-      <div class="item"><span class="swatch halogen"></span> Halogen</div>
-      <div class="item"><span class="swatch noble"></span> Noble gas</div>
-      <div class="item"><span class="swatch lanthanoid"></span> Lanthanoid</div>
-      <div class="item"><span class="swatch actinoid"></span> Actinoid</div>
-    </div>
-
-    <p style="text-align:center; color:#bbb; margin-top:12px;">Click an element to view details. (Only Hydrogen currently links to a detail page.)</p>
+  <div id="info">
+    <label class="toggle"><input type="checkbox" id="showLabels" checked> Show Labels</label>
+    <p style="margin:0;"><strong>Hydrogen (H)</strong> – description goes here.</p>
   </div>
+
+  <div id="error" role="alert"></div>
+
+  <script>
+    // Small helper to show error on-page + console
+    function showError(text) {
+      console.error(text);
+      const el = document.getElementById('error');
+      el.textContent = text;
+      el.style.display = 'block';
+    }
+
+    // Try to load a script and resolve when loaded, reject after timeout/error
+    function loadScript(src, timeout = 7000) {
+      return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.async = true;
+        let done = false;
+        const timer = setTimeout(() => {
+          if (!done) {
+            done = true;
+            s.onerror = s.onload = null;
+            reject(new Error('Timeout loading ' + src));
+          }
+        }, timeout);
+        s.onload = () => {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          resolve();
+        };
+        s.onerror = (e) => {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          reject(new Error('Failed to load ' + src));
+        };
+        document.head.appendChild(s);
+      });
+    }
+
+    // Try primary then fallback CDNs for 3Dmol
+    async function ensure3Dmol() {
+      const primary = 'https://3dmol.csb.pitt.edu/build/3Dmol-min.js';
+      const fallback = 'https://3Dmol.org/build/3Dmol-min.js';
+      try {
+        await loadScript(primary, 7000);
+        if (!window.$3Dmol) throw new Error('3Dmol loaded but $3Dmol missing (primary).');
+        return;
+      } catch (e1) {
+        console.warn('Primary 3Dmol failed:', e1.message);
+        try {
+          await loadScript(fallback, 7000);
+          if (!window.$3Dmol) throw new Error('3Dmol loaded but $3Dmol missing (fallback).');
+          return;
+        } catch (e2) {
+          throw new Error('Failed to load 3Dmol library from both CDNs.');
+        }
+      }
+    }
+
+    // Main init
+    (async function init() {
+      try {
+        await ensure3Dmol();
+      } catch (err) {
+        showError('Could not load 3D viewer library: ' + err.message);
+        return;
+      }
+
+      try {
+        // Create viewer
+        const viewer = $3Dmol.createViewer('viewer', { backgroundColor: 'black', antialias: true });
+
+        // Parameters
+        const ORBIT_RADIUS = 1.0;
+        const PROTON_RADIUS = 0.30;
+        const ELECTRON_RADIUS = 0.15;
+
+        // Orbit points (static)
+        function makeOrbit(radius, segments = 160) {
+          const pts = [];
+          for (let i = 0; i <= segments; i++) {
+            const theta = (2 * Math.PI) * (i / segments);
+            pts.push({ x: radius * Math.cos(theta), y: radius * Math.sin(theta), z: 0 });
+          }
+          return pts;
+        }
+        const orbitPts = makeOrbit(ORBIT_RADIUS, 160);
+
+        // Animation control
+        let running = true;
+        let last = performance.now();
+        const targetFPS = 60;
+        const minDt = 1000 / targetFPS;
+        const labelCheckbox = document.getElementById('showLabels');
+
+        // Pause when page hidden
+        document.addEventListener('visibilitychange', () => {
+          running = !document.hidden;
+          if (running) requestAnimationFrame(loop);
+        });
+
+        // Resize handling (best-effort)
+        window.addEventListener('resize', () => { try { viewer.resize(); } catch(e) {} });
+
+        // Draw one frame (time in ms)
+        function draw(now) {
+          const t = now / 1000;
+          const rps = 0.85;
+          const angle = t * 2 * Math.PI * rps;
+          const zWobble = Math.sin(t * 2 * Math.PI * 0.55) * 0.18;
+
+          const ex = ORBIT_RADIUS * Math.cos(angle);
+          const ey = ORBIT_RADIUS * Math.sin(angle);
+          const ez = zWobble;
+
+          // Clear small scene (cheap)
+          try { viewer.clear(); } catch (e) { try { viewer.removeAllModels && viewer.removeAllModels(); } catch (e2) {} }
+
+          // Proton
+          viewer.addSphere({ center: { x:0, y:0, z:0 }, radius: PROTON_RADIUS, color: 'red', opacity: 1.0 });
+
+          // Electron
+          viewer.addSphere({ center: { x: ex, y: ey, z: ez }, radius: ELECTRON_RADIUS, color: 'yellow', opacity: 1.0 });
+
+          // Orbit curve
+          viewer.addCurve({ points: orbitPts, color: 'white', linewidth: 1.2 });
+
+          // Labels (toggleable)
+          if (labelCheckbox.checked) {
+            viewer.addLabel('Proton', { position: { x: 0, y: 0.55, z: 0 }, backgroundColor: 'red', fontColor: 'black', fontSize: 12 });
+            viewer.addLabel('Electron', { position: { x: ex + 0.06, y: ey + 0.06, z: ez + 0.06 }, backgroundColor: 'yellow', fontColor: 'black', fontSize: 12 });
+          }
+
+          // slight auto-tilt for depth (try/catch)
+          try {
+            const rotateSpeed = 0.12;
+            const rotX = Math.sin(t * rotateSpeed) * 0.14;
+            const rotY = Math.cos(t * rotateSpeed) * 0.14;
+            viewer.setView({ rotation: [rotX, rotY, 0] });
+          } catch (e) {}
+
+          viewer.zoomTo();
+          viewer.render();
+        }
+
+        // RAF loop with simple FPS gating
+        function loop(now) {
+          if (!running) return;
+          const dt = now - last;
+          if (dt >= minDt) {
+            last = now - (dt % minDt);
+            draw(now);
+          }
+          requestAnimationFrame(loop);
+        }
+
+        // Start loop
+        requestAnimationFrame(loop);
+
+        // ensure immediate initial draw
+        try { draw(performance.now()); } catch (e) {}
+
+        // label toggles immediately (loop runs continuously)
+        labelCheckbox.addEventListener('change', () => { /* no-op - loop will redraw */ });
+
+      } catch (err) {
+        showError('Error initializing viewer: ' + (err && err.message ? err.message : err));
+      }
+    })();
+  </script>
 </body>
 </html>
