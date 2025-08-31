@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Hydrogen - My Atoms</title>
+  <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f9f9f9;
+      color: #222;
+    }
+    h1 {
+      color: #0055aa;
+    }
+    #viewer {
+      width: 600px;
+      height: 400px;
+      border: 1px solid #ccc;
+      margin-top: 20px;
+    }
+    a {
+      display: inline-block;
+      margin-top: 20px;
+      color: #0055aa;
+      text-decoration: none;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Hydrogen (H)</h1>
+  <p><strong>Atomic Number:</strong> 1</p>
+  <p><strong>Atomic Mass:</strong> 1.008 u</p>
+  <p><strong>Category:</strong> Nonmetal</p>
+  <p><strong>Electron Configuration:</strong> 1s<sup>1</sup></p>
+
+  <h2>3D Atomic Model</h2>
+  <div id="viewer"></div>
+
+  <a href="periodic.html">&larr; Back to Periodic Table</a>
+
+  <script>
+    // Create the 3D viewer inside the "viewer" div
+    let viewer = $3Dmol.createViewer("viewer", { backgroundColor: "white" });
+
+    // Hydrogen atom as a sphere (not to scale)
+    viewer.addSphere({
+      center: {x:0, y:0, z:0},
+      radius: 0.5,
+      color: "lightblue"
+    });
+
+    // Add a proton at the center
+    viewer.addSphere({
+      center: {x:0, y:0, z:0},
+      radius: 0.2,
+      color: "red"
+    });
+
+    // Add 1 electron orbit (simplified)
+    viewer.addSphere({
+      center: {x:1, y:0, z:0},
+      radius: 0.1,
+      color: "yellow"
+    });
+
+    viewer.zoomTo();
+    viewer.render();
+  </script>
+</body>
+</html>
