@@ -4,13 +4,15 @@
   <meta charset="UTF-8">
   <title>Hydrogen - My Atoms</title>
   <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
+  <!-- Google Fonts: Alsina -->
+  <link href="https://fonts.googleapis.com/css2?family=Alsina&display=swap" rel="stylesheet">
   <style>
     body {
       margin: 0;
       padding: 0;
       overflow: hidden;
-      font-family: Arial, sans-serif;
-      background: #111;
+      font-family: 'Alsina', sans-serif;
+      background: #000000; /* pure black */
       color: white;
     }
     #viewer {
@@ -46,24 +48,23 @@
   </div>
 
   <script>
-    // Create the 3D viewer
     let viewer = $3Dmol.createViewer("viewer", { backgroundColor: "black" });
 
     // Proton (red, center)
-    let proton = viewer.addSphere({
+    viewer.addSphere({
       center: {x:0, y:0, z:0},
       radius: 0.3,
       color: "red"
     });
 
     // Electron (yellow, orbiting)
-    let electron = viewer.addSphere({
+    viewer.addSphere({
       center: {x:1, y:0, z:0},
       radius: 0.15,
       color: "yellow"
     });
 
-    // Orbit path (wireframe circle)
+    // Orbit path
     function addOrbit(radius) {
       const segments = 100;
       const points = [];
@@ -73,7 +74,7 @@
       }
       viewer.addCurve({ points: points, color: "white", linewidth: 2 });
     }
-    addOrbit(1); // Hydrogen has one electron orbit
+    addOrbit(1);
 
     // Labels
     function addLabels() {
@@ -85,13 +86,10 @@
     // Toggle labels
     document.getElementById("showLabels").addEventListener("change", (e) => {
       viewer.removeAllLabels();
-      if (e.target.checked) {
-        addLabels();
-      }
+      if (e.target.checked) addLabels();
       viewer.render();
     });
 
-    // Show everything
     viewer.zoomTo();
     viewer.render();
   </script>
