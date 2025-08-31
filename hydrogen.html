@@ -1,42 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="utf-8" />
   <title>Hydrogen - My Atoms</title>
   <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
-  <!-- Google Fonts: Alsina -->
   <link href="https://fonts.googleapis.com/css2?family=Alsina&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    body {
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      font-family: 'Alsina', sans-serif;
-      background: #000000; /* pure black */
-      color: white;
-    }
-    #viewer {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: calc(100% - 120px);
-    }
+    html,body { height:100%; margin:0; background:#000; color:#fff; font-family:'Alsina', sans-serif; }
+    #viewer { position:absolute; top:0; left:0; width:100%; height:calc(100% - 120px); }
     #info {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      height: 120px;
-      background: #222;
-      color: white;
-      padding: 10px;
-      box-sizing: border-box;
-      font-size: 16px;
+      position:absolute; left:0; bottom:0; width:100%; height:120px;
+      background:#111; color:#fff; padding:12px; box-sizing:border-box;
+      display:flex; align-items:center; gap:18px;
+      font-size:16px;
     }
-    .toggle {
-      margin-right: 10px;
-    }
+    .toggle { display:flex; align-items:center; gap:8px; }
+    input[type="checkbox"] { transform:scale(1.1); }
+    p { margin:0; }
   </style>
 </head>
 <body>
@@ -48,50 +29,123 @@
   </div>
 
   <script>
-    let viewer = $3Dmol.createViewer("viewer", { backgroundColor: "black" });
+    // create viewer
+    const viewer = $3Dmol.createViewer("viewer", { backgroundColor: "black", antialias: true });
 
-    // Proton (red, center)
-    viewer.addSphere({
-      center: {x:0, y:0, z:0},
-      radius: 0.3,
-      color: "red"
-    });
+    // orbit params
+    const orbitRadius = 1.0;
+    const electronRadius = 0.12;
+    const protonRadius = 0.30;
 
-    // Electron (yellow, orbiting)
-    viewer.addSphere({
-      center: {x:1, y:0, z:0},
-      radius: 0.15,
-      color: "yellow"
-    });
-
-    // Orbit path
-    function addOrbit(radius) {
-      const segments = 100;
-      const points = [];
-      for (let i=0; i<=segments; i++) {
-        let theta = 2 * Math.PI * (i / segments);
-        points.push({x: radius * Math.cos(theta), y: radius * Math.sin(theta), z: 0});
+    // build orbit circle points (static shape reused each frame)
+    function makeOrbitPoints(radius, segments = 100) {
+      const pts = [];
+      for (let i = 0; i <= segments; i++) {
+        const theta = 2 * Math.PI * (i / segments);
+        pts.push({ x: radius * Math.cos(theta), y: radius * Math.sin(theta), z: 0 });
       }
-      viewer.addCurve({ points: points, color: "white", linewidth: 2 });
+      return pts;
     }
-    addOrbit(1);
+    const orbitPts = makeOrbitPoints(orbitRadius, 120);
 
-    // Labels
-    function addLabels() {
-      viewer.addLabel("Proton", {position: {x:0, y:0.5, z:0}, backgroundColor: "red", fontColor: "black"});
-      viewer.addLabel("Electron", {position: {x:1, y:0.3, z:0}, backgroundColor: "yellow", fontColor: "black"});
-    }
-    addLabels();
+    // animation state
+    let running = true;
+    let lastFrameTime = performance.now();
 
-    // Toggle labels
-    document.getElementById("showLabels").addEventListener("change", (e) => {
-      viewer.removeAllLabels();
-      if (e.target.checked) addLabels();
-      viewer.render();
+    // desired FPS gating (rAF tries to match refresh; this caps updates at ~60fps)
+    const targetFPS = 60;
+    const minDt = 1000 / targetFPS;
+
+    // label toggle
+    const labelCheckbox = document.getElementById("showLabels");
+
+    // pause/resume on visibility change (saves CPU)
+    document.addEventListener("visibilitychange", () => {
+      running = !document.hidden;
+      if (running) requestAnimationFrame(loop);
     });
 
-    viewer.zoomTo();
-    viewer.render();
+    // responsive: redraw on resize so viewer keeps correct size
+    window.addEventListener("resize", () => {
+      try { viewer.resize(); } catch(e) { /* viewer may handle sizing internally */ }
+    });
+
+    // a helper to (re)draw the small scene every frame
+    function renderFrame(time) {
+      // time in seconds
+      const t = time / 1000;
+
+      // compute angle (revolutions per second: 0.8 rps -> 0.8*2π rad/s)
+      const rps = 0.8; // change this to speed up/down
+      const angle = t * 2 * Math.PI * rps;
+
+      // add a slight z wobble for 3D effect
+      const zWobble = Math.sin(t * 2 * Math.PI * 0.6) * 0.15;
+
+      const ex = orbitRadius * Math.cos(angle);
+      const ey = orbitRadius * Math.sin(angle);
+      const ez = zWobble;
+
+      // clear shapes/models (cheap for tiny scene)
+      try {
+        viewer.clear(); // clears shapes & labels; 3Dmol supports this
+      } catch (e) {
+        // fallback: remove models if clear isn't present
+        try { viewer.removeAllModels && viewer.removeAllModels(); } catch {}
+      }
+
+      // Proton at center
+      viewer.addSphere({
+        center: { x: 0, y: 0, z: 0 },
+        radius: protonRadius,
+        color: "red",
+        opacity: 1.0
+      });
+
+      // Electron (moving)
+      viewer.addSphere({
+        center: { x: ex, y: ey, z: ez },
+        radius: electronRadius,
+        color: "yellow",
+        opacity: 1.0
+      });
+
+      // Orbit ring (white)
+      viewer.addCurve({ points: orbitPts, color: "white", linewidth: 1.5, dashed: false });
+
+      // Labels (toggleable)
+      if (labelCheckbox.checked) {
+        viewer.addLabel("Proton", { position: { x: 0, y: 0.5, z: 0 }, backgroundColor: "red", fontColor: "black", fontSize: 12, inFront: false });
+        viewer.addLabel("Electron", { position: { x: ex + 0.06, y: ey + 0.06, z: ez + 0.06 }, backgroundColor: "yellow", fontColor: "black", fontSize: 12, inFront: false });
+      }
+
+      // small auto-rotation of the scene for visual polish
+      const rotateSpeed = 0.12; // radians per second
+      const rotX = Math.sin(t * rotateSpeed) * 0.15;
+      const rotY = Math.cos(t * rotateSpeed) * 0.15;
+      try {
+        viewer.setView({ rotation: [rotX, rotY, 0] }); // optional; may be ignored
+      } catch (e) {
+        // if setView isn't available, we rely on default camera behaviors
+      }
+
+      viewer.zoomTo();
+      viewer.render();
+    }
+
+    // main RAF loop with FPS gating
+    function loop(now) {
+      if (!running) return;
+      const dt = now - lastFrameTime;
+      if (dt >= minDt) {
+        lastFrameTime = now - (dt % minDt);
+        renderFrame(now);
+      }
+      requestAnimationFrame(loop);
+    }
+
+    // start animation
+    requestAnimationFrame(loop);
   </script>
 </body>
 </html>
