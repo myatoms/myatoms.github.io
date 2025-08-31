@@ -3,60 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <title>Hydrogen - My Atoms</title>
-  <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
-  <!-- Google Fonts: Alsina -->
-  <link href="https://fonts.googleapis.com/css2?family=Alsina&display=swap" rel="stylesheet">
+
+  <!-- NOTE: removed Google Fonts link (some networks block fonts.googleapis.com causing MIME errors).
+       If you self-host the Alsina font later, add an @font-face block here. -->
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    body {
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      font-family: 'Alsina', sans-serif;
-      background: #000000; /* pure black */
-      color: white;
-    }
-    #viewer {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: calc(100% - 120px);
-      background: black;
-    }
+    html,body { height:100%; margin:0; background:#000; color:#fff; font-family: Arial, sans-serif; }
+    #viewer { position:absolute; top:0; left:0; width:100%; height:calc(100% - 120px); background:black; }
     #info {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      height: 120px;
-      background: #222;
-      color: white;
-      padding: 10px;
-      box-sizing: border-box;
-      font-size: 16px;
-      display:flex;
-      align-items:center;
-      gap:12px;
+      position:absolute; left:0; bottom:0; width:100%; height:120px;
+      background:#111; color:#fff; padding:12px; box-sizing:border-box;
+      display:flex; align-items:center; gap:14px; font-size:16px;
     }
-    .toggle {
-      margin-right: 10px;
-      display:flex;
-      align-items:center;
-      gap:6px;
-    }
-    input[type="checkbox"] { transform: scale(1.05); }
-    /* small error overlay if lib missing */
+    .toggle { display:flex; align-items:center; gap:8px; }
+    input[type="checkbox"]{ transform:scale(1.05); }
     #error {
-      position: absolute;
-      top: 12px;
-      left: 12px;
-      background: rgba(255,0,0,0.08);
-      color: #ffdddd;
-      padding: 8px 10px;
-      border-radius: 6px;
-      display:none;
-      z-index: 9999;
+      position: absolute; top:12px; left:12px; z-index:9999;
+      background: rgba(255,0,0,0.08); color:#ffdddd; padding:8px 10px; border-radius:6px; display:none;
     }
   </style>
 </head>
@@ -71,52 +34,84 @@
   <div id="error" role="alert"></div>
 
   <script>
-    // Defensive helper: show a small on-page error + console
-    function showError(msg) {
-      console.error(msg);
+    // Small helper to show error on-page + console
+    function showError(text) {
+      console.error(text);
       const el = document.getElementById('error');
-      el.textContent = msg;
+      el.textContent = text;
       el.style.display = 'block';
     }
 
-    // Wait until DOM is ready and 3Dmol is available
-    function ready(callback) {
-      function go() {
-        if (window.$3Dmol) return callback();
-        // if 3Dmol not yet available, wait a short bit
-        const waited = 0;
-        const maxWait = 5000; // ms
-        let start = performance.now();
-        const poll = () => {
-          if (window.$3Dmol) return callback();
-          if (performance.now() - start > maxWait) {
-            showError('3Dmol library failed to load (check network).');
-            return;
+    // Try to load a script and resolve when loaded, reject after timeout/error
+    function loadScript(src, timeout = 7000) {
+      return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.async = true;
+        let done = false;
+        const timer = setTimeout(() => {
+          if (!done) {
+            done = true;
+            s.onerror = s.onload = null;
+            reject(new Error('Timeout loading ' + src));
           }
-          setTimeout(poll, 50);
+        }, timeout);
+        s.onload = () => {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          resolve();
         };
-        poll();
-      }
+        s.onerror = (e) => {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          reject(new Error('Failed to load ' + src));
+        };
+        document.head.appendChild(s);
+      });
+    }
 
-      if (document.readyState === 'complete' || document.readyState === 'interactive') {
-        go();
-      } else {
-        document.addEventListener('DOMContentLoaded', go);
+    // Try primary then fallback CDNs for 3Dmol
+    async function ensure3Dmol() {
+      const primary = 'https://3dmol.csb.pitt.edu/build/3Dmol-min.js';
+      const fallback = 'https://3Dmol.org/build/3Dmol-min.js';
+      try {
+        await loadScript(primary, 7000);
+        if (!window.$3Dmol) throw new Error('3Dmol loaded but $3Dmol missing (primary).');
+        return;
+      } catch (e1) {
+        console.warn('Primary 3Dmol failed:', e1.message);
+        try {
+          await loadScript(fallback, 7000);
+          if (!window.$3Dmol) throw new Error('3Dmol loaded but $3Dmol missing (fallback).');
+          return;
+        } catch (e2) {
+          throw new Error('Failed to load 3Dmol library from both CDNs.');
+        }
       }
     }
 
-    ready(() => {
+    // Main init
+    (async function init() {
       try {
-        // Create viewer with antialias for smoother look
+        await ensure3Dmol();
+      } catch (err) {
+        showError('Could not load 3D viewer library: ' + err.message);
+        return;
+      }
+
+      try {
+        // Create viewer
         const viewer = $3Dmol.createViewer('viewer', { backgroundColor: 'black', antialias: true });
 
-        // scene parameters
+        // Parameters
         const ORBIT_RADIUS = 1.0;
         const PROTON_RADIUS = 0.30;
         const ELECTRON_RADIUS = 0.15;
 
-        // precompute orbit points for a smooth curve
-        function makeOrbitPoints(radius, segments = 160) {
+        // Orbit points (static)
+        function makeOrbit(radius, segments = 160) {
           const pts = [];
           for (let i = 0; i <= segments; i++) {
             const theta = (2 * Math.PI) * (i / segments);
@@ -124,35 +119,28 @@
           }
           return pts;
         }
-        const orbitPts = makeOrbitPoints(ORBIT_RADIUS, 160);
+        const orbitPts = makeOrbit(ORBIT_RADIUS, 160);
 
-        // minimal camera setup
-        try { viewer.setBackgroundColor('black'); } catch(e){}
-
-        // For performance we will clear+rebuild this tiny scene each frame.
-        // This is fine for a demo with a couple of shapes and guarantees correctness.
+        // Animation control
         let running = true;
         let last = performance.now();
         const targetFPS = 60;
         const minDt = 1000 / targetFPS;
-
         const labelCheckbox = document.getElementById('showLabels');
 
-        // pause rendering when tab is hidden
+        // Pause when page hidden
         document.addEventListener('visibilitychange', () => {
           running = !document.hidden;
           if (running) requestAnimationFrame(loop);
         });
 
-        // responsive resize (3Dmol will often size itself correctly but call resize if available)
-        window.addEventListener('resize', () => {
-          try { viewer.resize(); } catch(e) {}
-        });
+        // Resize handling (best-effort)
+        window.addEventListener('resize', () => { try { viewer.resize(); } catch(e) {} });
 
-        // main draw function
+        // Draw one frame (time in ms)
         function draw(now) {
-          const t = now / 1000; // seconds
-          const rps = 0.85; // revolutions per second
+          const t = now / 1000;
+          const rps = 0.85;
           const angle = t * 2 * Math.PI * rps;
           const zWobble = Math.sin(t * 2 * Math.PI * 0.55) * 0.18;
 
@@ -160,29 +148,14 @@
           const ey = ORBIT_RADIUS * Math.sin(angle);
           const ez = zWobble;
 
-          // clear shapes & labels
-          try {
-            viewer.clear();
-          } catch (e) {
-            // fallback if clear not supported
-            try { viewer.removeAllModels && viewer.removeAllModels(); } catch (e2) {}
-          }
+          // Clear small scene (cheap)
+          try { viewer.clear(); } catch (e) { try { viewer.removeAllModels && viewer.removeAllModels(); } catch (e2) {} }
 
           // Proton
-          viewer.addSphere({
-            center: { x: 0, y: 0, z: 0 },
-            radius: PROTON_RADIUS,
-            color: 'red',
-            opacity: 1.0
-          });
+          viewer.addSphere({ center: { x:0, y:0, z:0 }, radius: PROTON_RADIUS, color: 'red', opacity: 1.0 });
 
           // Electron
-          viewer.addSphere({
-            center: { x: ex, y: ey, z: ez },
-            radius: ELECTRON_RADIUS,
-            color: 'yellow',
-            opacity: 1.0
-          });
+          viewer.addSphere({ center: { x: ex, y: ey, z: ez }, radius: ELECTRON_RADIUS, color: 'yellow', opacity: 1.0 });
 
           // Orbit curve
           viewer.addCurve({ points: orbitPts, color: 'white', linewidth: 1.2 });
@@ -193,7 +166,7 @@
             viewer.addLabel('Electron', { position: { x: ex + 0.06, y: ey + 0.06, z: ez + 0.06 }, backgroundColor: 'yellow', fontColor: 'black', fontSize: 12 });
           }
 
-          // slight auto-tilt for depth (try/catch in case not supported)
+          // slight auto-tilt for depth (try/catch)
           try {
             const rotateSpeed = 0.12;
             const rotX = Math.sin(t * rotateSpeed) * 0.14;
@@ -205,7 +178,7 @@
           viewer.render();
         }
 
-        // RAF loop with FPS gating
+        // RAF loop with simple FPS gating
         function loop(now) {
           if (!running) return;
           const dt = now - last;
@@ -216,21 +189,19 @@
           requestAnimationFrame(loop);
         }
 
-        // start animation loop
+        // Start loop
         requestAnimationFrame(loop);
 
-        // immediate render so something appears even if RAF delayed
-        try { draw(performance.now()); } catch(e){}
+        // ensure immediate initial draw
+        try { draw(performance.now()); } catch (e) {}
 
-        // re-render immediately when toggling labels so change is visible at once
-        labelCheckbox.addEventListener('change', () => {
-          try { draw(performance.now()); } catch(e) {}
-        });
+        // label toggles immediately (loop runs continuously)
+        labelCheckbox.addEventListener('change', () => { /* no-op - loop will redraw */ });
 
       } catch (err) {
-        showError('Failed to initialize 3D viewer: ' + (err && err.message ? err.message : err));
+        showError('Error initializing viewer: ' + (err && err.message ? err.message : err));
       }
-    });
+    })();
   </script>
 </body>
 </html>
