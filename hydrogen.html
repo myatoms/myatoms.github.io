@@ -6,6 +6,7 @@
   <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
   <!-- Google Fonts: Alsina -->
   <link href="https://fonts.googleapis.com/css2?family=Alsina&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     body {
       margin: 0;
@@ -21,6 +22,7 @@
       left: 0;
       width: 100%;
       height: calc(100% - 120px);
+      background: black;
     }
     #info {
       position: absolute;
@@ -33,9 +35,9 @@
       padding: 10px;
       box-sizing: border-box;
       font-size: 16px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
+      display:flex;
+      align-items:center;
+      gap:12px;
     }
     .toggle {
       margin-right: 10px;
@@ -44,135 +46,190 @@
       gap:6px;
     }
     input[type="checkbox"] { transform: scale(1.05); }
+    /* small error overlay if lib missing */
+    #error {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(255,0,0,0.08);
+      color: #ffdddd;
+      padding: 8px 10px;
+      border-radius: 6px;
+      display:none;
+      z-index: 9999;
+    }
   </style>
 </head>
 <body>
-  <div id="viewer"></div>
+  <div id="viewer" aria-hidden="false"></div>
 
   <div id="info">
     <label class="toggle"><input type="checkbox" id="showLabels" checked> Show Labels</label>
     <p style="margin:0;"><strong>Hydrogen (H)</strong> – description goes here.</p>
   </div>
 
+  <div id="error" role="alert"></div>
+
   <script>
-    // Create the viewer (antialias true for smoother visuals)
-    const viewer = $3Dmol.createViewer("viewer", { backgroundColor: "black", antialias: true });
-
-    // Static parameters
-    const ORBIT_RADIUS = 1.0;
-    const PROTON_RADIUS = 0.30;
-    const ELECTRON_RADIUS = 0.15;
-
-    // Precompute orbit points for the ring (static)
-    function makeOrbit(radius, segments = 120) {
-      const pts = [];
-      for (let i = 0; i <= segments; i++) {
-        const theta = (2 * Math.PI) * (i / segments);
-        pts.push({ x: radius * Math.cos(theta), y: radius * Math.sin(theta), z: 0 });
-      }
-      return pts;
+    // Defensive helper: show a small on-page error + console
+    function showError(msg) {
+      console.error(msg);
+      const el = document.getElementById('error');
+      el.textContent = msg;
+      el.style.display = 'block';
     }
-    const orbitPts = makeOrbit(ORBIT_RADIUS, 120);
 
-    // Animation control
-    let running = true;
-    let lastFrameTime = performance.now();
-    const targetFPS = 60;
-    const minDt = 1000 / targetFPS;
+    // Wait until DOM is ready and 3Dmol is available
+    function ready(callback) {
+      function go() {
+        if (window.$3Dmol) return callback();
+        // if 3Dmol not yet available, wait a short bit
+        const waited = 0;
+        const maxWait = 5000; // ms
+        let start = performance.now();
+        const poll = () => {
+          if (window.$3Dmol) return callback();
+          if (performance.now() - start > maxWait) {
+            showError('3Dmol library failed to load (check network).');
+            return;
+          }
+          setTimeout(poll, 50);
+        };
+        poll();
+      }
 
-    // Label checkbox
-    const labelCheckbox = document.getElementById("showLabels");
+      if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        go();
+      } else {
+        document.addEventListener('DOMContentLoaded', go);
+      }
+    }
 
-    // Pause when tab hidden to save CPU
-    document.addEventListener("visibilitychange", () => {
-      running = !document.hidden;
-      if (running) requestAnimationFrame(loop);
-    });
-
-    // Resize viewer when window changes
-    window.addEventListener("resize", () => {
-      try { viewer.resize(); } catch (e) {}
-    });
-
-    // A function that draws the entire scene for the current time t (ms)
-    function drawFrame(now) {
-      const t = now / 1000; // seconds
-
-      // electron angular speed (revs per second)
-      const rps = 0.85;
-      const angle = t * 2 * Math.PI * rps;
-
-      // small z wobble for 3D feeling
-      const z = Math.sin(t * 2 * Math.PI * 0.55) * 0.18;
-
-      const ex = ORBIT_RADIUS * Math.cos(angle);
-      const ey = ORBIT_RADIUS * Math.sin(angle);
-      const ez = z;
-
-      // For simplicity and reliability across browsers, clear & rebuild the tiny scene each frame.
-      // This is cheap for this small demo and keeps the code straightforward.
+    ready(() => {
       try {
-        viewer.clear(); // clears shapes/labels added via addSphere/addCurve/addLabel
-      } catch (e) {
-        // fallback if clear not available
-        try { viewer.removeAllModels && viewer.removeAllModels(); } catch {}
+        // Create viewer with antialias for smoother look
+        const viewer = $3Dmol.createViewer('viewer', { backgroundColor: 'black', antialias: true });
+
+        // scene parameters
+        const ORBIT_RADIUS = 1.0;
+        const PROTON_RADIUS = 0.30;
+        const ELECTRON_RADIUS = 0.15;
+
+        // precompute orbit points for a smooth curve
+        function makeOrbitPoints(radius, segments = 160) {
+          const pts = [];
+          for (let i = 0; i <= segments; i++) {
+            const theta = (2 * Math.PI) * (i / segments);
+            pts.push({ x: radius * Math.cos(theta), y: radius * Math.sin(theta), z: 0 });
+          }
+          return pts;
+        }
+        const orbitPts = makeOrbitPoints(ORBIT_RADIUS, 160);
+
+        // minimal camera setup
+        try { viewer.setBackgroundColor('black'); } catch(e){}
+
+        // For performance we will clear+rebuild this tiny scene each frame.
+        // This is fine for a demo with a couple of shapes and guarantees correctness.
+        let running = true;
+        let last = performance.now();
+        const targetFPS = 60;
+        const minDt = 1000 / targetFPS;
+
+        const labelCheckbox = document.getElementById('showLabels');
+
+        // pause rendering when tab is hidden
+        document.addEventListener('visibilitychange', () => {
+          running = !document.hidden;
+          if (running) requestAnimationFrame(loop);
+        });
+
+        // responsive resize (3Dmol will often size itself correctly but call resize if available)
+        window.addEventListener('resize', () => {
+          try { viewer.resize(); } catch(e) {}
+        });
+
+        // main draw function
+        function draw(now) {
+          const t = now / 1000; // seconds
+          const rps = 0.85; // revolutions per second
+          const angle = t * 2 * Math.PI * rps;
+          const zWobble = Math.sin(t * 2 * Math.PI * 0.55) * 0.18;
+
+          const ex = ORBIT_RADIUS * Math.cos(angle);
+          const ey = ORBIT_RADIUS * Math.sin(angle);
+          const ez = zWobble;
+
+          // clear shapes & labels
+          try {
+            viewer.clear();
+          } catch (e) {
+            // fallback if clear not supported
+            try { viewer.removeAllModels && viewer.removeAllModels(); } catch (e2) {}
+          }
+
+          // Proton
+          viewer.addSphere({
+            center: { x: 0, y: 0, z: 0 },
+            radius: PROTON_RADIUS,
+            color: 'red',
+            opacity: 1.0
+          });
+
+          // Electron
+          viewer.addSphere({
+            center: { x: ex, y: ey, z: ez },
+            radius: ELECTRON_RADIUS,
+            color: 'yellow',
+            opacity: 1.0
+          });
+
+          // Orbit curve
+          viewer.addCurve({ points: orbitPts, color: 'white', linewidth: 1.2 });
+
+          // Labels (toggleable)
+          if (labelCheckbox.checked) {
+            viewer.addLabel('Proton', { position: { x: 0, y: 0.55, z: 0 }, backgroundColor: 'red', fontColor: 'black', fontSize: 12 });
+            viewer.addLabel('Electron', { position: { x: ex + 0.06, y: ey + 0.06, z: ez + 0.06 }, backgroundColor: 'yellow', fontColor: 'black', fontSize: 12 });
+          }
+
+          // slight auto-tilt for depth (try/catch in case not supported)
+          try {
+            const rotateSpeed = 0.12;
+            const rotX = Math.sin(t * rotateSpeed) * 0.14;
+            const rotY = Math.cos(t * rotateSpeed) * 0.14;
+            viewer.setView({ rotation: [rotX, rotY, 0] });
+          } catch (e) {}
+
+          viewer.zoomTo();
+          viewer.render();
+        }
+
+        // RAF loop with FPS gating
+        function loop(now) {
+          if (!running) return;
+          const dt = now - last;
+          if (dt >= minDt) {
+            last = now - (dt % minDt);
+            draw(now);
+          }
+          requestAnimationFrame(loop);
+        }
+
+        // start animation loop
+        requestAnimationFrame(loop);
+
+        // immediate render so something appears even if RAF delayed
+        try { draw(performance.now()); } catch(e){}
+
+        // re-render immediately when toggling labels so change is visible at once
+        labelCheckbox.addEventListener('change', () => {
+          try { draw(performance.now()); } catch(e) {}
+        });
+
+      } catch (err) {
+        showError('Failed to initialize 3D viewer: ' + (err && err.message ? err.message : err));
       }
-
-      // Proton (center)
-      viewer.addSphere({
-        center: { x: 0, y: 0, z: 0 },
-        radius: PROTON_RADIUS,
-        color: "red",
-        opacity: 1.0
-      });
-
-      // Electron (moving)
-      viewer.addSphere({
-        center: { x: ex, y: ey, z: ez },
-        radius: ELECTRON_RADIUS,
-        color: "yellow",
-        opacity: 1.0
-      });
-
-      // Orbit ring (static shape recreated here)
-      viewer.addCurve({ points: orbitPts, color: "white", linewidth: 1.5 });
-
-      // Labels (toggleable) — fontColor set to black per request
-      if (labelCheckbox.checked) {
-        viewer.addLabel("Proton", { position: { x: 0, y: 0.5, z: 0 }, backgroundColor: "red", fontColor: "black", fontSize: 12 });
-        viewer.addLabel("Electron", { position: { x: ex + 0.06, y: ey + 0.06, z: ez + 0.06 }, backgroundColor: "yellow", fontColor: "black", fontSize: 12 });
-      }
-
-      // Slight auto-tilt for better depth (viewer.setView may not be supported in all builds)
-      // We'll attempt to set a small rotation; if unsupported it's ignored.
-      try {
-        const rotateSpeed = 0.12; // radians/sec
-        const rotX = Math.sin(t * rotateSpeed) * 0.14;
-        const rotY = Math.cos(t * rotateSpeed) * 0.14;
-        viewer.setView({ rotation: [rotX, rotY, 0] });
-      } catch (e) { /* ignore if not available */ }
-
-      viewer.zoomTo();
-      viewer.render();
-    }
-
-    // RAF loop with simple FPS gating
-    function loop(now) {
-      if (!running) return;
-      const dt = now - lastFrameTime;
-      if (dt >= minDt) {
-        lastFrameTime = now - (dt % minDt);
-        drawFrame(now);
-      }
-      requestAnimationFrame(loop);
-    }
-
-    // Start
-    requestAnimationFrame(loop);
-
-    // Ensure label toggle re-renders immediately when changed
-    labelCheckbox.addEventListener("change", () => {
-      // redraw on next frame (loop runs continuously)
     });
   </script>
 </body>
