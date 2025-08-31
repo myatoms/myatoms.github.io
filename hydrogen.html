@@ -76,16 +76,17 @@
     addOrbit(1); // Hydrogen has one electron orbit
 
     // Labels
-    let protonLabel = viewer.addLabel("Proton", {position: {x:0, y:0.5, z:0}, backgroundColor: "red"});
-    let electronLabel = viewer.addLabel("Electron", {position: {x:1, y:0.3, z:0}, backgroundColor: "yellow"});
+    function addLabels() {
+      viewer.addLabel("Proton", {position: {x:0, y:0.5, z:0}, backgroundColor: "red", fontColor: "black"});
+      viewer.addLabel("Electron", {position: {x:1, y:0.3, z:0}, backgroundColor: "yellow", fontColor: "black"});
+    }
+    addLabels();
 
     // Toggle labels
     document.getElementById("showLabels").addEventListener("change", (e) => {
+      viewer.removeAllLabels();
       if (e.target.checked) {
-        viewer.addLabel("Proton", {position: {x:0, y:0.5, z:0}, backgroundColor: "red"});
-        viewer.addLabel("Electron", {position: {x:1, y:0.3, z:0}, backgroundColor: "yellow"});
-      } else {
-        viewer.removeAllLabels();
+        addLabels();
       }
       viewer.render();
     });
