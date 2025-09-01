@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Molecule Simulator - Debugged</title>
+  <title>Molecule Simulator - Fixed Stability</title>
   <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
   <style>
     :root {
@@ -13,172 +13,160 @@
       --muted:#9dbadf;
       --accent:#12a4ff;
       --ui:#e6eef8;
-      --status-bg: rgba(255,255,255,0.04);
     }
     html,body{height:100%;margin:0;background:var(--bg);color:var(--ui);font-family:Inter, "Segoe UI", Roboto, Arial, sans-serif;}
     #app{display:flex;height:100vh;}
-    #controls{width:var(--panel-w);min-width:260px;padding:12px 14px;box-sizing:border-box;background:var(--panel-bg);border-right:1px solid rgba(255,255,255,0.03);overflow:auto;}
+    #controls{width:var(--panel-w);min-width:260px;padding:18px;box-sizing:border-box;background:var(--panel-bg);border-right:1px solid rgba(255,255,255,0.03);overflow:auto;}
     #viewer{flex:1;position:relative;}
-    h1{margin:0 0 8px 0;font-size:16px;color:var(--accent);}
-    label{display:block;margin-top:8px;font-size:13px;color:var(--muted);}
+    h1{margin:0 0 8px 0;font-size:18px;color:var(--accent);}
+    label{display:block;margin-top:12px;font-size:13px;color:var(--muted);}
     input[type=text]{width:100%;padding:9px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);background:#071023;color:var(--ui);box-sizing:border-box;margin-top:8px;}
-    button{margin-top:10px;padding:9px 12px;border-radius:8px;border:0;cursor:pointer;background:var(--accent);color:#002234;font-weight:600;}
+    button{margin-top:12px;padding:9px 12px;border-radius:8px;border:0;cursor:pointer;background:var(--accent);color:#002234;font-weight:600;}
     .toggles{margin-top:12px;display:flex;flex-direction:column;gap:8px;}
+    .toggle{display:flex;align-items:center;gap:8px;}
     .small{font-size:12px;color:var(--muted);}
-    #statusBox { position:absolute; left:12px; top:12px; padding:8px 10px; background:var(--status-bg); color:var(--ui); border-radius:6px; font-size:13px; max-width:420px; z-index:1000; }
-    .muted { color:var(--muted); font-size:12px; margin-top:8px; }
-    .error { color: #ff7b7b; font-weight:700; }
-    pre.console { background:rgba(255,255,255,0.03); padding:8px; border-radius:6px; max-height:160px; overflow:auto; font-size:12px; color:var(--ui); }
+    .footer{margin-top:14px;font-size:12px;color:var(--muted);}
+    .note{margin-top:10px;font-size:12px;color:var(--muted);line-height:1.3;}
   </style>
 </head>
 <body>
   <div id="app">
     <div id="controls">
       <h1>Molecule Simulator - Formula Only</h1>
+
       <label>Enter chemical formula only</label>
       <input id="molInput" value="NH3" placeholder="Examples: H2O, NH3, CH4, CO2, C6H6, C2H5OH" />
+
       <div style="display:flex;gap:8px;">
         <button id="confirmBtn">Render</button>
         <button id="examplesBtn">Examples</button>
       </div>
 
       <div class="toggles">
-        <div><input id="showLabels" type="checkbox" checked> <label for="showLabels" class="small">Show labels</label></div>
-        <div><input id="showBonds" type="checkbox" checked> <label for="showBonds" class="small">Show bonds</label></div>
-        <div><input id="showNuclei" type="checkbox" checked> <label for="showNuclei" class="small">Show nuclei (red transparent)</label></div>
-        <div><input id="lowQuality" type="checkbox"> <label for="lowQuality" class="small">Low quality for performance</label></div>
+        <div class="toggle"><input id="showLabels" type="checkbox" checked> <label for="showLabels" class="small">Show labels</label></div>
+        <div class="toggle"><input id="showBonds" type="checkbox" checked> <label for="showBonds" class="small">Show bonds</label></div>
+        <div class="toggle"><input id="showNuclei" type="checkbox" checked> <label for="showNuclei" class="small">Show nuclei (red transparent)</label></div>
+        <div class="toggle"><input id="lowQuality" type="checkbox"> <label for="lowQuality" class="small">Low quality for performance</label></div>
       </div>
 
-      <div class="muted">Status and diagnostics below. If rendering still fails, paste the status text or console error into chat.</div>
-      <div style="margin-top:8px;">
-        <pre id="consoleOutput" class="console"></pre>
+      <div class="note">
+        This tool accepts chemical formulas only. It builds connectivity based on valence heuristics and covalent radii, then computes a stable 3D geometry via a careful relaxation step. The result is static and stable for viewing and export.
+      </div>
+
+      <div class="footer small">
+        If you want extra molecules added to a built in precise database, tell me which ones and I will add them.
       </div>
     </div>
 
     <div id="viewer"></div>
   </div>
 
-  <div id="statusBox">Initializing...</div>
-
   <script>
-  // ---- utilities for UI debugging ----
-  const statusBox = document.getElementById('statusBox');
-  const consoleOutput = document.getElementById('consoleOutput');
-  function setStatus(msg, type = 'info') {
-    statusBox.textContent = msg;
-    if(type === 'error') statusBox.classList.add('error'); else statusBox.classList.remove('error');
-    log(msg);
-  }
-  function log(...args) {
-    console.log(...args);
-    const txt = args.map(a => (typeof a === 'object' ? JSON.stringify(a,null,2) : String(a))).join(' ');
-    consoleOutput.textContent = (consoleOutput.textContent ? consoleOutput.textContent + '\n' : '') + txt;
-    // keep console scrolled
-    consoleOutput.scrollTop = consoleOutput.scrollHeight;
-  }
+  // Fixed, robust molecule visualizer (formula-only)
+  // Key fixes: prevent spurious H-H bonds, clamp forces/velocities, cap nonbond repulsion,
+  // safer relax integrator, NaN/Inf protection, viewer size safety.
 
-  // ---- check 3Dmol availability ----
-  if(typeof window.$3Dmol === 'undefined') {
-    setStatus('3Dmol library not found. Check network or include 3Dmol locally.', 'error');
-    log('ERROR: $3Dmol undefined. Script tag used:', document.querySelector('script[src*="3Dmol"]')?.src);
-    throw new Error('3Dmol library missing');
-  }
-
-  // ---- create viewer and ensure correct size ----
   const viewerDiv = document.getElementById('viewer');
-  const viewer = $3Dmol.createViewer(viewerDiv, { backgroundColor: 'black', antialias: true });
-  function ensureViewerSize() {
-    try {
-      const w = viewerDiv.clientWidth || Math.max(window.innerWidth - 320, 400);
-      const h = viewerDiv.clientHeight || Math.max(window.innerHeight, 300);
-      viewer.setSize(w, h);
-      log('viewer.setSize', w, h);
-    } catch(e) {
-      log('setSize error', e);
-    }
+  if(typeof window.$3Dmol === 'undefined') {
+    document.body.innerHTML = '<div style="padding:20px;color:white;background:black">3Dmol missing. Ensure network access to https://3Dmol.org/build/3Dmol-min.js</div>';
+    throw new Error('3Dmol missing');
   }
-  ensureViewerSize();
-  window.addEventListener('resize', () => { ensureViewerSize(); viewer.render(); });
+  const viewer = $3Dmol.createViewer(viewerDiv, { backgroundColor: 'black', antialias: true });
+  function safeSetSize() {
+    const w = Math.max(200, viewerDiv.clientWidth || window.innerWidth - 320);
+    const h = Math.max(200, viewerDiv.clientHeight || window.innerHeight);
+    try { viewer.setSize(w, h); } catch(e) { console.warn('viewer.setSize failed', e); }
+  }
+  safeSetSize();
+  window.addEventListener('resize', () => { safeSetSize(); viewer.render(); });
 
-  // ---- element data ----
   const elementColors = { H:'#FFFFFF', C:'#909090', N:'#3050F8', O:'#FF0D0D', F:'#90E050', Cl:'#1FF01F', S:'#FFFF30', P:'#FFA500' };
-  const covalentRadii = { H:0.31, C:0.76, N:0.71, O:0.66, F:0.57, P:1.07, S:1.05, Cl:1.02 };
-  const valences = { H:1, He:0, Li:1, Be:2, B:3, C:4, N:3, O:2, F:1, Ne:0, Na:1, Mg:2, Al:3, Si:4, P:3, S:2, Cl:1 };
+  const covalentRadii = { H:0.31, C:0.76, N:0.71, O:0.66, F:0.57, P:1.07, S:1.05, Cl:1.02, Br:1.2, I:1.39 };
+  const valences = { H:1, He:0, Li:1, Be:2, B:3, C:4, N:3, O:2, F:1, Ne:0, Na:1, Mg:2, Al:3, Si:4, P:3, S:2, Cl:1, Br:1, I:1 };
 
-  // ---- parsing function (robust) ----
+  // Parse formula (robust)
   function parseFormula(input) {
     if(!input) return null;
-    try {
-      let s = String(input).trim();
-      if(s.length === 0) return null;
-      s = s.replace(/\s+/g,''); // remove spaces
-      // expand simple parentheses like (CH3)2
-      function expandParens(str) {
-        while(true) {
-          const m = str.match(/\(([A-Za-z0-9]+)\)(\d+)/);
-          if(!m) break;
-          const group = m[1], count = parseInt(m[2],10);
-          let rep = '';
-          for(let i=0;i<count;i++) rep += group;
-          str = str.replace(m[0], rep);
-        }
-        return str;
+    let s = String(input).trim();
+    if(!s) return null;
+    s = s.replace(/\s+/g,'');
+    // expand simple parentheses (one level repeated)
+    function expandParens(str) {
+      while(true) {
+        const m = str.match(/\(([A-Za-z0-9]+)\)(\d+)/);
+        if(!m) break;
+        const group = m[1], count = parseInt(m[2],10) || 1;
+        str = str.replace(m[0], group.repeat(count));
       }
-      s = expandParens(s);
-      const parts = [];
-      for(let i=0;i<s.length;) {
-        const ch = s[i];
-        if(/[A-Za-z]/.test(ch)) {
-          let el = ch;
-          if(i+1 < s.length && /[a-z]/.test(s[i+1])) { el += s[i+1]; i += 2; }
-          else { i += 1; }
-          let num = '';
-          while(i < s.length && /[0-9]/.test(s[i])) { num += s[i]; i++; }
-          const cnt = num ? parseInt(num,10) : 1;
-          parts.push({ el, cnt });
-        } else {
-          // invalid char
-          log('parseFormula invalid character at position', i, s[i]);
-          return null;
-        }
-      }
-      const atoms = [];
-      for(const p of parts) {
-        const raw = p.el;
-        const el = (raw.length === 1) ? raw.toUpperCase() : (raw[0].toUpperCase() + raw[1].toLowerCase());
-        if(!/^[A-Z][a-z]?$/.test(el)) { log('Invalid element symbol', raw, '->', el); return null; }
-        for(let k=0;k<p.cnt;k++) atoms.push(el);
-      }
-      log('parseFormula success', input, '->', atoms);
-      return atoms;
-    } catch(err) {
-      log('parseFormula exception', err);
-      return null;
+      return str;
     }
+    s = expandParens(s);
+    const parts = [];
+    for(let i=0;i<s.length;) {
+      const ch = s[i];
+      if(/[A-Za-z]/.test(ch)) {
+        let el = ch;
+        if(i+1 < s.length && /[a-z]/.test(s[i+1])) { el += s[i+1]; i += 2; }
+        else { i += 1; }
+        let num = '';
+        while(i<s.length && /[0-9]/.test(s[i])) { num += s[i]; i++; }
+        const cnt = num ? parseInt(num,10) : 1;
+        parts.push({el, cnt});
+      } else {
+        return null;
+      }
+    }
+    const atoms = [];
+    for(const p of parts) {
+      const raw = p.el;
+      const el = raw.length === 1 ? raw.toUpperCase() : (raw[0].toUpperCase() + raw[1].toLowerCase());
+      if(!/^[A-Z][a-z]?$/.test(el)) return null;
+      for(let k=0;k<p.cnt;k++) atoms.push(el);
+    }
+    return atoms;
   }
 
-  // ---- connectivity builder ----
+  // Build connectivity but avoid H-H unless formula is only H
   function buildConnectivity(atoms) {
     const n = atoms.length;
+    const onlyHydrogen = atoms.every(a => a === 'H');
     const candidates = [];
     for(let i=0;i<n;i++){
       for(let j=i+1;j<n;j++){
+        // skip H-H pairs unless the molecule is pure H
+        if(!onlyHydrogen && atoms[i]==='H' && atoms[j]==='H') continue;
         const ri = covalentRadii[atoms[i]] || 0.9;
         const rj = covalentRadii[atoms[j]] || 0.9;
         const target = (ri + rj) * 0.95;
         candidates.push({i,j,target});
       }
     }
-    candidates.sort((a,b)=>a.target-b.target);
+    // If there are no candidates because many H were skipped (e.g. H2), fall back to allowing H-H for exactly two atoms
+    if(candidates.length === 0 && atoms.length === 2 && atoms[0] === 'H' && atoms[1] === 'H') {
+      const ri = covalentRadii['H'], rj = covalentRadii['H'];
+      candidates.push({i:0, j:1, target:(ri+rj)*0.95});
+    }
+
+    // prefer bonds with smaller target but also slightly prefer pairs involving higher-valence atoms
+    candidates.sort((a,b) => {
+      const va = (valences[atoms[a.i]] || 1) + (valences[atoms[a.j]] || 1);
+      const vb = (valences[atoms[b.i]] || 1) + (valences[atoms[b.j]] || 1);
+      const sa = a.target / va;
+      const sb = b.target / vb;
+      return sa - sb;
+    });
+
     const bonds = [];
     const remainingValence = atoms.map(el => valences[el] != null ? valences[el] : 1);
+
     for(const c of candidates){
       if(remainingValence[c.i] > 0 && remainingValence[c.j] > 0) {
         bonds.push({a:c.i, b:c.j, rest: c.target});
         remainingValence[c.i]--; remainingValence[c.j]--;
       }
     }
-    // ensure connectivity
+
+    // ensure connectivity: connect components by closest pairs ignoring valence if necessary
     const parent = Array.from({length:n}, (_,i)=>i);
     function find(x){ return parent[x]===x ? x : (parent[x]=find(parent[x])); }
     function unify(a,b){ const ra=find(a), rb=find(b); if(ra!==rb) parent[ra]=rb; }
@@ -194,55 +182,70 @@
         unify(a,b);
       }
     }
-    log('buildConnectivity', {atoms, bonds});
+
     return { bonds };
   }
 
-  // ---- initial placement ----
+  // BFS placement
   function placeInitialGeometry(atoms, bonds) {
     const n = atoms.length;
-    const pos = Array.from({length:n}, ()=>({x:0,y:0,z:0}));
+    const positions = Array.from({length:n}, ()=>({x:0,y:0,z:0}));
     const deg = Array.from({length:n}, ()=>0);
     bonds.forEach(b => { deg[b.a]++; deg[b.b]++; });
-    let root=0, best=-Infinity;
-    for(let i=0;i<n;i++){ const score = deg[i]*2 + (covalentRadii[atoms[i]]||0); if(score>best){best=score; root=i;} }
+
+    let root = 0, best = -Infinity;
+    for(let i=0;i<n;i++){
+      const score = deg[i] * 2 + (covalentRadii[atoms[i]] || 0);
+      if(score > best){ best = score; root = i; }
+    }
+
     const adj = Array.from({length:n}, ()=>[]);
     bonds.forEach(b => { adj[b.a].push(b.b); adj[b.b].push(b.a); });
+
     const visited = new Array(n).fill(false);
-    const q=[root]; visited[root]=true; pos[root]={x:0,y:0,z:0};
-    while(q.length){
-      const cur=q.shift();
-      const neigh=adj[cur];
-      for(let k=0;k<neigh.length;k++){
-        const nb=neigh[k];
+    const queue = [root];
+    visited[root] = true;
+    positions[root] = {x:0,y:0,z:0};
+
+    while(queue.length) {
+      const cur = queue.shift();
+      const neighbors = adj[cur];
+      for(let k=0;k<neighbors.length;k++){
+        const nb = neighbors[k];
         if(visited[nb]) continue;
-        const phi=(k+1)*2.399963229728653;
+        const phi = (k+1) * 2.399963229728653;
         const radius = ((covalentRadii[atoms[cur]]||0.9) + (covalentRadii[atoms[nb]]||0.9)) * 0.95;
-        pos[nb] = {
-          x: pos[cur].x + radius * Math.cos(phi) * (1 + 0.12*(Math.random()-0.5)),
-          y: pos[cur].y + radius * Math.sin(phi) * (1 + 0.12*(Math.random()-0.5)),
-          z: pos[cur].z + (0.18*(k - neigh.length/2)) * (1 + 0.15*(Math.random()-0.5))
+        positions[nb] = {
+          x: positions[cur].x + radius * Math.cos(phi) * (1 + 0.08*(Math.random()-0.5)),
+          y: positions[cur].y + radius * Math.sin(phi) * (1 + 0.08*(Math.random()-0.5)),
+          z: positions[cur].z + (0.14 * (k - neighbors.length/2)) * (1 + 0.12*(Math.random()-0.5))
         };
-        visited[nb]=true; q.push(nb);
+        visited[nb] = true;
+        queue.push(nb);
       }
     }
-    for(let i=0;i<n;i++) if(!visited[i]) pos[i] = {x:(Math.random()-0.5)*1.2, y:(Math.random()-0.5)*1.2, z:(Math.random()-0.5)*1.2};
-    log('placeInitialGeometry positions', pos);
-    return pos;
+
+    for(let i=0;i<n;i++) if(!visited[i]) positions[i] = {x:(Math.random()-0.5)*1.2, y:(Math.random()-0.5)*1.2, z:(Math.random()-0.5)*1.2};
+    return positions;
   }
 
-  // ---- relaxation (stops when static) ----
+  // Stable relax with clamps
   function relaxGeometry(atomsList, bonds, positions) {
     const n = atomsList.length;
-    const maxIter = 2500;
-    const dt = 0.02;
-    const kBond = 140.0;
-    const nonbondEps = 0.06;
-    const damping = 0.32;
-    const masses = atomsList.map(el => (covalentRadii[el]||0.9)*10 + 1);
+    const maxIter = 2000;
+    const dt = 0.01;        // smaller step
+    const kBond = 90.0;     // moderate stiffness
+    const nonbondEps = 0.03;// weaker repulsion
+    const damping = 0.5;    // stronger damping
+    const masses = atomsList.map(el => (covalentRadii[el]||0.9) * 10 + 1);
     const vel = Array.from({length:n}, ()=>({x:0,y:0,z:0}));
     const restLen = bonds.map(b => b.rest || ((covalentRadii[atomsList[b.a]]||0.9) + (covalentRadii[atomsList[b.b]]||0.9)) * 0.95);
     const pos = positions.map(p => ({x:p.x, y:p.y, z:p.z}));
+
+    const MAX_FORCE = 1e4;
+    const MAX_VEL = 5.0;
+    const MAX_STEP_DISP = 0.2;
+    const MAX_RR = 1e5; // cap (sigma/dist)^12
 
     for(let iter=0; iter<maxIter; iter++){
       const forces = Array.from({length:n}, ()=>({x:0,y:0,z:0}));
@@ -251,51 +254,82 @@
         const b = bonds[bi];
         const a = b.a, c = b.b;
         const rvec = { x: pos[c].x - pos[a].x, y: pos[c].y - pos[a].y, z: pos[c].z - pos[a].z };
-        const dist = Math.hypot(rvec.x, rvec.y, rvec.z) + 1e-9;
+        let dist = Math.hypot(rvec.x, rvec.y, rvec.z) + 1e-9;
         const dir = { x: rvec.x / dist, y: rvec.y / dist, z: rvec.z / dist };
         const diff = dist - restLen[bi];
-        const fmag = -kBond * diff;
+        let fmag = -kBond * diff;
+        // clamp fmag
+        if(Math.abs(fmag) > MAX_FORCE) fmag = Math.sign(fmag) * MAX_FORCE;
         const f = { x: dir.x * fmag, y: dir.y * fmag, z: dir.z * fmag };
         forces[a].x += f.x; forces[a].y += f.y; forces[a].z += f.z;
         forces[c].x -= f.x; forces[c].y -= f.y; forces[c].z -= f.z;
       }
-      // nonbonded repulsion
+      // nonbonded repulsion (clamped)
       for(let i=0;i<n;i++){
         for(let j=i+1;j<n;j++){
+          // skip if bonded
           let bonded = false;
           for(const b of bonds) if((b.a===i && b.b===j) || (b.a===j && b.b===i)) { bonded = true; break; }
           if(bonded) continue;
           const rvec = { x: pos[j].x - pos[i].x, y: pos[j].y - pos[i].y, z: pos[j].z - pos[i].z };
           const dist = Math.hypot(rvec.x, rvec.y, rvec.z) + 1e-9;
-          const sigma = (covalentRadii[atomsList[i]]||0.9) + (covalentRadii[atomsList[j]]||0.9);
-          const rr = Math.pow((sigma + 1e-9) / dist, 12);
+          const sigma = (covalentRadii[atomsList[i]] || 0.9) + (covalentRadii[atomsList[j]] || 0.9);
+          let rr = Math.pow((sigma + 1e-9) / dist, 12);
+          if(rr > MAX_RR) rr = MAX_RR;
           const fmag = nonbondEps * rr;
           const dir = { x: rvec.x / dist, y: rvec.y / dist, z: rvec.z / dist };
           const f = { x: dir.x * fmag, y: dir.y * fmag, z: dir.z * fmag };
+          // clamp small numeric issues
           forces[i].x -= f.x; forces[i].y -= f.y; forces[i].z -= f.z;
           forces[j].x += f.x; forces[j].y += f.y; forces[j].z += f.z;
         }
       }
-      // integrate and check max displacement
+      // integrate, clamp velocities and displacements
       let maxDisp = 0;
       for(let i=0;i<n;i++){
         const acc = { x: forces[i].x / masses[i], y: forces[i].y / masses[i], z: forces[i].z / masses[i] };
         vel[i].x += acc.x * dt; vel[i].y += acc.y * dt; vel[i].z += acc.z * dt;
-        vel[i].x *= (1 - damping); vel[i].y *= (1 - damping); vel[i].z *= (1 - damping);
-        pos[i].x += vel[i].x * dt; pos[i].y += vel[i].y * dt; pos[i].z += vel[i].z * dt;
-        const disp = Math.hypot(vel[i].x * dt, vel[i].y * dt, vel[i].z * dt);
+        // clamp vel magnitude
+        const vm = Math.hypot(vel[i].x, vel[i].y, vel[i].z);
+        if(vm > MAX_VEL) {
+          vel[i].x = vel[i].x / vm * MAX_VEL;
+          vel[i].y = vel[i].y / vm * MAX_VEL;
+          vel[i].z = vel[i].z / vm * MAX_VEL;
+        }
+        // damping
+        vel[i].x *= (1 - damping);
+        vel[i].y *= (1 - damping);
+        vel[i].z *= (1 - damping);
+        // compute step displacement and clamp
+        let dx = vel[i].x * dt, dy = vel[i].y * dt, dz = vel[i].z * dt;
+        const disp = Math.hypot(dx,dy,dz);
+        if(disp > MAX_STEP_DISP) {
+          const scale = MAX_STEP_DISP / (disp + 1e-12);
+          dx *= scale; dy *= scale; dz *= scale;
+          // scale velocity as well to match limited step
+          vel[i].x = dx / dt; vel[i].y = dy / dt; vel[i].z = dz / dt;
+        }
+        pos[i].x += dx; pos[i].y += dy; pos[i].z += dz;
+        if(Number.isNaN(pos[i].x) || !isFinite(pos[i].x)) pos[i].x = 0;
+        if(Number.isNaN(pos[i].y) || !isFinite(pos[i].y)) pos[i].y = 0;
+        if(Number.isNaN(pos[i].z) || !isFinite(pos[i].z)) pos[i].z = 0;
         if(disp > maxDisp) maxDisp = disp;
       }
-      if(maxDisp < 1e-4) {
-        log('converged at iter', iter);
-        break;
-      }
-      if(iter % 250 === 0) log('relax iter', iter, 'maxDisp', maxDisp);
+      if(maxDisp < 5e-5) break;
+    }
+    // final safety clamp: if any coordinate huge, scale whole structure down
+    let maxCoord = 0;
+    for(const p of pos) {
+      maxCoord = Math.max(maxCoord, Math.abs(p.x), Math.abs(p.y), Math.abs(p.z));
+    }
+    if(maxCoord > 1e3) {
+      const s = 1e3 / maxCoord;
+      for(const p of pos) { p.x *= s; p.y *= s; p.z *= s; }
     }
     return pos;
   }
 
-  // ---- render static ----
+  // Render
   function renderStatic(atomsList, bonds, positions) {
     viewer.clear();
     const showLabels = document.getElementById('showLabels').checked;
@@ -328,61 +362,39 @@
       }
     }
 
-    ensureViewerSize();
-    viewer.zoomTo();
+    safeSetSize();
+    try { viewer.zoomTo(); } catch(e) { /* ignore */ }
     viewer.render();
-    setStatus('Rendered: ' + atomsList.length + ' atoms, ' + bonds.length + ' bonds');
   }
 
-  // ---- pipeline ----
+  // Full pipeline
   function buildAndRenderFromFormula(formula) {
-    setStatus('Parsing formula...');
-    consoleOutput.textContent = ''; // clear debug console
-    try {
-      const atomsList = parseFormula(formula);
-      if(!atomsList) { setStatus('Parsing failed. Check formula format', 'error'); return; }
-      setStatus('Parsed: ' + atomsList.join(', '));
-      const conn = buildConnectivity(atomsList);
-      const bonds = conn.bonds;
-      log('Connectivity produced bonds:', bonds);
-      if(bonds.length === 0) log('Warning: zero bonds detected, rendering atoms alone');
-
-      // ensure bond rest lengths
-      for(let i=0;i<bonds.length;i++){
-        if(!bonds[i].rest){
-          const a = atomsList[bonds[i].a], b = atomsList[bonds[i].b];
-          bonds[i].rest = ((covalentRadii[a]||0.9) + (covalentRadii[b]||0.9)) * 0.95;
-        }
+    const atomsList = parseFormula(formula);
+    if(!atomsList) { alert('Could not parse formula. Use standard chemical formulas only. Examples: H2O NH3 CH4 CO2 C6H6 C2H5OH'); return; }
+    const conn = buildConnectivity(atomsList);
+    let bonds = conn.bonds || [];
+    // ensure rest lengths
+    for(let i=0;i<bonds.length;i++){
+      if(!bonds[i].rest){
+        const a = atomsList[bonds[i].a], b = atomsList[bonds[i].b];
+        bonds[i].rest = ((covalentRadii[a]||0.9) + (covalentRadii[b]||0.9)) * 0.95;
       }
-
-      setStatus('Placing initial geometry...');
-      const initialPositions = placeInitialGeometry(atomsList, bonds);
-
-      setStatus('Relaxing geometry (this may take a few hundred ms)...');
-      const finalPositions = relaxGeometry(atomsList, bonds, initialPositions);
-
-      setStatus('Rendering static structure...');
-      renderStatic(atomsList, bonds, finalPositions);
-
-    } catch(err) {
-      log('ERROR in pipeline', err);
-      setStatus('Rendering failed. See console for details', 'error');
     }
+    const initialPositions = placeInitialGeometry(atomsList, bonds);
+    const finalPositions = relaxGeometry(atomsList, bonds, initialPositions);
+    renderStatic(atomsList, bonds, finalPositions);
   }
 
-  // ---- UI wiring ----
+  // UI
   document.getElementById('confirmBtn').addEventListener('click', () => {
     const s = document.getElementById('molInput').value.trim();
-    if(!s) return;
-    buildAndRenderFromFormula(s);
+    if(s) buildAndRenderFromFormula(s);
   });
-
   document.getElementById('examplesBtn').addEventListener('click', () => {
     const ex = ['NH3','H2O','CH4','CO2','C6H6','C2H5OH','C2H4','C2H2','H2','O2','N2'];
     const pick = prompt('Type example formula:' + '\n' + ex.join(', '), 'NH3');
     if(pick) document.getElementById('molInput').value = pick;
   });
-
   ['showLabels','showBonds','showNuclei','lowQuality'].forEach(id => {
     document.getElementById(id).addEventListener('change', () => {
       const cur = document.getElementById('molInput').value.trim();
@@ -390,9 +402,9 @@
     });
   });
 
-  // initial render and status
-  setStatus('Ready. Try a formula like H2O or NH3');
-  setTimeout(()=>{ buildAndRenderFromFormula(document.getElementById('molInput').value); }, 160);
+  // initial render
+  setTimeout(()=>{ buildAndRenderFromFormula(document.getElementById('molInput').value); }, 120);
+
   </script>
 </body>
 </html>
