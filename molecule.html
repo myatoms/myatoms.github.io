@@ -63,9 +63,7 @@
   </div>
 
   <script>
-  // Universal formula-only molecule visualizer
-  // Parsing, bonding, 3D initial placement, and careful relaxation to a static geometry
-  // All text and UI uses hyphens, no em-dash characters
+  // Improved universal formula-only molecule visualizer with robust parsing and error handling
 
   const viewer = $3Dmol.createViewer('viewer',{backgroundColor:'black',antialias:true});
   viewer.setBackgroundColor(0x000000);
@@ -80,57 +78,95 @@
   // Typical valences for bonding heuristics
   const valences = { H:1, He:0, Li:1, Be:2, B:3, C:4, N:3, O:2, F:1, Ne:0, Na:1, Mg:2, Al:3, Si:4, P:3, S:2, Cl:1, Br:1, I:1 };
 
-  // Parse chemical formula like C6H6 or H2O
-  function parseFormula(formula) {
-    if(!formula) return null;
-    const s = formula.trim();
-    // allow only letters and numbers and parentheses
-    if(!/^[A-Za-z0-9()]+$/.test(s)) return null;
-    // Expand groups with parentheses e.g. (CH3)2CH -> not full parser, we support simple cases
-    // For simplicity implement basic parenthesis handling
-    function expandParens(str) {
-      // handle nested parentheses by using a loop
-      while(true) {
-        const m = str.match(/\(([A-Za-z0-9]+)\)(\d+)/);
-        if(!m) break;
-        const group = m[1], count = parseInt(m[2]||'1');
-        let rep = '';
-        for(let i=0;i<count;i++) rep += group;
-        str = str.replace(m[0], rep);
+  // Normalize and parse chemical formula like C6H6 or H2O or h2o or (CH3)2CH
+  function parseFormula(input) {
+    if(!input) return null;
+    try {
+      // remove whitespace
+      let s = input.replace(/\s+/g,'');
+      if(s.length === 0) return null;
+
+      // handle lowercase input by normalizing element letters to correct case
+      // also keep parentheses and digits intact
+      // scan string and rebuild standardized token sequence of [Element][count]
+      const tokens = [];
+      // Expand simple parenthesis groups like (CH3)2
+      function expandParens(str) {
+        // iterative approach to handle nested parentheses reasonably
+        while(true) {
+          const m = str.match(/\(([A-Za-z0-9]+)\)(\d+)/);
+          if(!m) break;
+          const group = m[1], count = parseInt(m[2]||'1',10);
+          let rep = '';
+          for(let i=0;i<count;i++) rep += group;
+          str = str.replace(m[0], rep);
+        }
+        return str;
       }
-      return str;
+
+      s = expandParens(s);
+
+      // Use regex to capture sequences of letters (1 or 2) optionally followed by digits
+      // But first we need to group letters correctly: iterate characters and build element tokens
+      const parts = [];
+      for(let i=0;i<s.length;) {
+        const ch = s[i];
+        if(/[A-Za-z]/.test(ch)) {
+          // look ahead for second letter if it's lowercase or a letter
+          let el = ch;
+          if(i+1 < s.length && /[a-z]/.test(s[i+1])) {
+            el += s[i+1];
+            i += 2;
+          } else {
+            i += 1;
+          }
+          // capture number after the element if present
+          let num = '';
+          while(i < s.length && /[0-9]/.test(s[i])) { num += s[i]; i++; }
+          parts.push({el, count: num ? parseInt(num,10) : 1});
+        } else {
+          // unexpected char like digit without preceding element or parentheses (shouldn't happen) -> abort
+          // allow digits only after an element; if we encounter digits here parsing failed
+          return null;
+        }
+      }
+
+      // Now build atom list with corrected capitalization
+      const atomList = [];
+      for(const p of parts){
+        const rawEl = p.el;
+        const el = (rawEl.length === 1) ? rawEl.toUpperCase() : (rawEl[0].toUpperCase() + rawEl[1].toLowerCase());
+        const cnt = p.count || 1;
+        if(!/^[A-Z][a-z]?$/.test(el)) return null;
+        for(let k=0;k<cnt;k++) atomList.push(el);
+      }
+
+      if(atomList.length === 0) return null;
+      return atomList;
+    } catch(err) {
+      console.error('parseFormula error', err);
+      return null;
     }
-    let expanded = expandParens(s);
-    // Now capture element symbols and counts
-    const re = /([A-Z][a-z]?)(\d*)/g;
-    let m; const atoms = [];
-    while((m = re.exec(expanded)) !== null) {
-      const el = m[1];
-      const cnt = m[2] ? parseInt(m[2]) : 1;
-      for(let i=0;i<cnt;i++) atoms.push(el);
-    }
-    if(atoms.length === 0) return null;
-    return atoms;
   }
 
   // Build connectivity using greedy algorithm using covalent radii and valence limits
   function buildConnectivity(atoms) {
     const n = atoms.length;
-    const coords = []; // initial positions will be assigned later
+    // initial coords for distance heuristics
+    const coords = [];
     for(let i=0;i<n;i++){
       coords.push({x:Math.random()*0.8 - 0.4, y:Math.random()*0.8 - 0.4, z:Math.random()*0.8 - 0.4});
     }
-    // compute candidate pairs sorted by radius-based target length
     const candidates = [];
     for(let i=0;i<n;i++){
       for(let j=i+1;j<n;j++){
         const ri = covalentRadii[atoms[i]] || 0.9;
         const rj = covalentRadii[atoms[j]] || 0.9;
-        const target = (ri + rj) * 0.95; // approximate desired bond length
+        const target = (ri + rj) * 0.95;
         candidates.push({i,j,target});
       }
     }
-    // sort by target ascending to prefer shorter bonds first
+    // prefer forming bonds between lighter targets first
     candidates.sort((a,b) => a.target - b.target);
 
     const bonds = [];
@@ -138,17 +174,12 @@
 
     for(const c of candidates){
       if(remainingValence[c.i] > 0 && remainingValence[c.j] > 0) {
-        // Accept bond based on valence and a heuristic probability that avoids overbonding heavy atoms
         bonds.push({a:c.i, b:c.j, rest: c.target});
         remainingValence[c.i]--; remainingValence[c.j]--;
       }
     }
 
-    // Ensure connectivity: if graph is disconnected try to connect components by closest pairs ignoring valence
-    function findParent(par) {
-      if(par[p] === p) return p;
-    }
-    // Quick union find to check components
+    // Ensure connectivity: connect components if disconnected
     const parent = Array.from({length:n}, (_,i)=>i);
     function find(x){ return parent[x]===x ? x : (parent[x]=find(parent[x])); }
     function unify(a,b){ const ra=find(a), rb=find(b); if(ra!==rb) parent[ra]=rb; }
@@ -160,21 +191,21 @@
       for(let i=0;i<reps.length-1;i++){
         const a = reps[i], b = reps[i+1];
         const ri = covalentRadii[atoms[a]] || 0.9, rj = covalentRadii[atoms[b]] || 0.9;
-        bonds.push({a, b, rest: (ri+rj)*0.95});
+        bonds.push({a, b, rest: (ri + rj) * 0.95});
+        unify(a,b);
       }
     }
 
     return { bonds, coords };
   }
 
-  // Place atoms initial positions by a simple BFS placement starting from heaviest atom
+  // Place atoms initial positions using BFS placement from a root atom chosen by degree and radius
   function placeInitialGeometry(atoms, bonds) {
     const n = atoms.length;
     const positions = Array.from({length:n}, ()=>({x:0,y:0,z:0}));
     const deg = Array.from({length:n}, ()=>0);
     bonds.forEach(b => { deg[b.a]++; deg[b.b]++; });
 
-    // choose root as atom with highest degree or heaviest element via covalent radius
     let root = 0;
     let bestScore = -Infinity;
     for(let i=0;i<n;i++){
@@ -182,37 +213,32 @@
       if(score > bestScore){ bestScore = score; root = i; }
     }
 
-    const visited = new Array(n).fill(false);
     const adj = Array.from({length:n}, ()=>[]);
     bonds.forEach(b => { adj[b.a].push(b.b); adj[b.b].push(b.a); });
 
-    // BFS seed
-    positions[root] = {x:0,y:0,z:0};
-    visited[root] = true;
+    const visited = new Array(n).fill(false);
     const queue = [root];
+    visited[root] = true;
+    positions[root] = {x:0,y:0,z:0};
 
     while(queue.length){
       const cur = queue.shift();
       const neighbors = adj[cur];
-      // determine spacing based on neighbor bond lengths
       for(let k=0;k<neighbors.length;k++){
         const nb = neighbors[k];
         if(visited[nb]) continue;
-        // angle distribution using golden angle to avoid overlap
-        const phi = (k+1) * 2.399963229728653; // golden angle in radians
-        const radius = (covalentRadii[atoms[cur]]||0.9) + (covalentRadii[atoms[nb]]||0.9);
+        const phi = (k+1) * 2.399963229728653;
+        const radius = ((covalentRadii[atoms[cur]]||0.9) + (covalentRadii[atoms[nb]]||0.9));
         const r = radius * 0.95;
-        // place relative to cur in spherical coordinates
-        const x = positions[cur].x + r * Math.cos(phi) * (1 + 0.15*(Math.random()-0.5));
-        const y = positions[cur].y + r * Math.sin(phi) * (1 + 0.15*(Math.random()-0.5));
-        const z = positions[cur].z + (0.2 * (k - neighbors.length/2)) * (1 + 0.2*(Math.random()-0.5));
+        const x = positions[cur].x + r * Math.cos(phi) * (1 + 0.12*(Math.random()-0.5));
+        const y = positions[cur].y + r * Math.sin(phi) * (1 + 0.12*(Math.random()-0.5));
+        const z = positions[cur].z + (0.18 * (k - neighbors.length/2)) * (1 + 0.15*(Math.random()-0.5));
         positions[nb] = {x,y,z};
         visited[nb] = true;
         queue.push(nb);
       }
     }
 
-    // For any isolated atoms not reached, scatter them
     for(let i=0;i<n;i++){
       if(!visited[i]) positions[i] = {x:(Math.random()-0.5)*1.2, y:(Math.random()-0.5)*1.2, z:(Math.random()-0.5)*1.2};
     }
@@ -220,26 +246,22 @@
     return positions;
   }
 
-  // Relaxation to minimize bond spring energy and short-range repulsion
-  // This runs until convergence and then stops, producing a static geometry
+  // Relaxation: strong bond springs, short-range repulsion, heavy damping until converged
   function relaxGeometry(atomsList, bonds, positions) {
     const n = atomsList.length;
-    const maxIter = 3000;
-    const dt = 0.02; // time step
-    const kBond = 120.0; // bond stiffness strong to keep bonds in length
-    const nonbondEps = 0.08; // repulsion strength
-    const damping = 0.35; // velocity damping large for stability
+    const maxIter = 2500;
+    const dt = 0.02;
+    const kBond = 140.0;
+    const nonbondEps = 0.06;
+    const damping = 0.32;
     const masses = atomsList.map(el => (covalentRadii[el]||0.9) * 10 + 1);
     const vel = Array.from({length:n}, ()=>({x:0,y:0,z:0}));
-    const restLen = bonds.map(b => b.rest || ((covalentRadii[atomsList[b.a]]||0.9) + (covalentRadii[atomsList[b.b]]||0.9))*0.95);
-    // convert positions to float arrays
+    const restLen = bonds.map(b => b.rest || ((covalentRadii[atomsList[b.a]]||0.9) + (covalentRadii[atomsList[b.b]]||0.9)) * 0.95);
     const pos = positions.map(p => ({x:p.x, y:p.y, z:p.z}));
 
-    let converged = false;
     for(let iter=0; iter<maxIter; iter++){
-      // zero forces
       const forces = Array.from({length:n}, ()=>({x:0,y:0,z:0}));
-      // bond forces
+      // bonds
       for(let bi=0; bi<bonds.length; bi++){
         const b = bonds[bi];
         const a = b.a, c = b.b;
@@ -252,18 +274,16 @@
         forces[a].x += f.x; forces[a].y += f.y; forces[a].z += f.z;
         forces[c].x -= f.x; forces[c].y -= f.y; forces[c].z -= f.z;
       }
-      // nonbonded short range repulsion
+      // nonbonded repulsion
       for(let i=0;i<n;i++){
         for(let j=i+1;j<n;j++){
-          // skip if bonded
           let bonded = false;
-          for(let b of bonds) if((b.a===i && b.b===j) || (b.a===j && b.b===i)) { bonded = true; break; }
+          for(const b of bonds) if((b.a===i && b.b===j) || (b.a===j && b.b===i)) { bonded = true; break; }
           if(bonded) continue;
           const rvec = { x: pos[j].x - pos[i].x, y: pos[j].y - pos[i].y, z: pos[j].z - pos[i].z };
           const dist = Math.hypot(rvec.x, rvec.y, rvec.z) + 1e-9;
           const sigma = (covalentRadii[atomsList[i]] || 0.9) + (covalentRadii[atomsList[j]] || 0.9);
-          // use repulsive term proportional to (sigma/dist)^12 but scaled down
-          const rr = Math.pow((sigma+1e-9) / dist, 12);
+          const rr = Math.pow((sigma + 1e-9) / dist, 12);
           const fmag = nonbondEps * rr;
           const dir = { x: rvec.x / dist, y: rvec.y / dist, z: rvec.z / dist };
           const f = { x: dir.x * fmag, y: dir.y * fmag, z: dir.z * fmag };
@@ -271,30 +291,22 @@
           forces[j].x += f.x; forces[j].y += f.y; forces[j].z += f.z;
         }
       }
-      // integrate velocities and positions semi-implicitly
+      // integrate
       let maxDisp = 0;
       for(let i=0;i<n;i++){
         const acc = { x: forces[i].x / masses[i], y: forces[i].y / masses[i], z: forces[i].z / masses[i] };
         vel[i].x += acc.x * dt; vel[i].y += acc.y * dt; vel[i].z += acc.z * dt;
-        // damping
-        vel[i].x *= (1 - damping);
-        vel[i].y *= (1 - damping);
-        vel[i].z *= (1 - damping);
-        // position update
-        pos[i].x += vel[i].x * dt;
-        pos[i].y += vel[i].y * dt;
-        pos[i].z += vel[i].z * dt;
+        vel[i].x *= (1 - damping); vel[i].y *= (1 - damping); vel[i].z *= (1 - damping);
+        pos[i].x += vel[i].x * dt; pos[i].y += vel[i].y * dt; pos[i].z += vel[i].z * dt;
         const disp = Math.hypot(vel[i].x * dt, vel[i].y * dt, vel[i].z * dt);
         if(disp > maxDisp) maxDisp = disp;
       }
-      // convergence criterion: max displacement small
-      if(maxDisp < 1e-4) { converged = true; break; }
+      if(maxDisp < 1e-4) break;
     }
-    // return positions
     return pos;
   }
 
-  // Render static structure using 3Dmol
+  // Rendering
   function renderStatic(atomsList, bonds, positions) {
     viewer.clear();
     const showLabels = document.getElementById('showLabels').checked;
@@ -302,7 +314,6 @@
     const showNuclei = document.getElementById('showNuclei').checked;
     const lowQ = document.getElementById('lowQuality').checked;
 
-    // nuclei in red transparent under atoms
     if(showNuclei) {
       for(let i=0;i<atomsList.length;i++){
         const p = positions[i];
@@ -332,32 +343,31 @@
     viewer.render();
   }
 
-  // Main pipeline: parse formula, build connectivity, initial placement, relax, render static
+  // Full pipeline with error handling
   function buildAndRenderFromFormula(formula) {
-    const atomsList = parseFormula(formula);
-    if(!atomsList) { alert('Could not parse formula. Use standard chemical formulas only. Examples: H2O NH3 CH4 CO2 C6H6 C2H5OH'); return; }
+    try {
+      const atomsList = parseFormula(formula);
+      if(!atomsList) { alert('Could not parse formula. Use standard chemical formulas only. Examples: H2O NH3 CH4 CO2 C6H6 C2H5OH'); return; }
 
-    // Build connectivity
-    const conn = buildConnectivity(atomsList);
-    const bonds = conn.bonds;
+      const conn = buildConnectivity(atomsList);
+      let bonds = conn.bonds;
 
-    // Place initial geometry
-    const initialPositions = placeInitialGeometry(atomsList, bonds);
-
-    // Assign rest lengths for bonds if missing
-    for(let i=0;i<bonds.length;i++){
-      if(!bonds[i].rest) {
-        const a = atomsList[bonds[i].a], b = atomsList[bonds[i].b];
-        const ra = covalentRadii[a] || 0.9, rb = covalentRadii[b] || 0.9;
-        bonds[i].rest = (ra + rb) * 0.95;
+      // ensure rest lengths set
+      for(let i=0;i<bonds.length;i++){
+        if(!bonds[i].rest){
+          const a = atomsList[bonds[i].a], b = atomsList[bonds[i].b];
+          bonds[i].rest = (covalentRadii[a] || 0.9) + (covalentRadii[b] || 0.9);
+          bonds[i].rest *= 0.95;
+        }
       }
+
+      const initialPositions = placeInitialGeometry(atomsList, bonds);
+      const finalPositions = relaxGeometry(atomsList, bonds, initialPositions);
+      renderStatic(atomsList, bonds, finalPositions);
+    } catch(err) {
+      console.error('buildAndRender error', err);
+      alert('An unexpected error occurred while rendering. Check the console for details and paste the formula here if it fails again.');
     }
-
-    // Relaxation to stable static coordinates
-    const finalPositions = relaxGeometry(atomsList, bonds, initialPositions);
-
-    // Render
-    renderStatic(atomsList, bonds, finalPositions);
   }
 
   // UI hooks
@@ -371,7 +381,6 @@
     if(pick) document.getElementById('molInput').value = pick;
   });
 
-  // Toggles re-render from current formula
   ['showLabels','showBonds','showNuclei','lowQuality'].forEach(id => {
     document.getElementById(id).addEventListener('change', () => {
       const cur = document.getElementById('molInput').value.trim();
@@ -379,10 +388,9 @@
     });
   });
 
-  // initial render
+  // initial render of NH3
   setTimeout(()=>{ buildAndRenderFromFormula(document.getElementById('molInput').value); }, 120);
 
-  // responsive
   window.addEventListener('resize', () => {
     viewer.setSize(document.getElementById('viewer').clientWidth, document.getElementById('viewer').clientHeight);
     viewer.render();
