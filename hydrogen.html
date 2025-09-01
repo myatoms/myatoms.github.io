@@ -1,159 +1,117 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hydrogen Atom Masterclass</title>
-  <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      font-family: sans-serif;
-      background: #000;
-      color: white;
-    }
-    #viewer {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: calc(100% - 300px);
-    }
-    #info {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      height: 300px;
-      background: rgba(34,34,34,0.8);
-      color: white;
-      padding: 20px;
-      box-sizing: border-box;
-      overflow-y: auto;
-      box-shadow: 0 -5px 15px rgba(0,0,0,0.5);
-    }
-    .toggle { margin-right: 15px; }
-    h2 { color: #ffd700; margin-top: 0; }
-    p { line-height:1.5; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hydrogen Atom Masterclass</title>
+<script src="https://3Dmol.org/build/3Dmol-min.js"></script>
+<style>
+body {margin:0;padding:0;overflow:hidden;font-family:sans-serif;background:#000;color:white;}
+#viewer{position:absolute;top:0;left:0;width:100%;height:calc(100% - 300px);}
+#info{position:absolute;bottom:0;left:0;width:100%;height:300px;background:rgba(34,34,34,0.8);color:white;padding:20px;box-sizing:border-box;overflow-y:auto;box-shadow:0 -5px 15px rgba(0,0,0,0.5);}
+.toggle{margin-right:15px;}
+h2{color:#ffd700;margin-top:0;}
+p{line-height:1.5;}
+</style>
 </head>
 <body>
-  <div id="viewer"></div>
-  <div id="info">
-    <div>
-      <label class="toggle"><input type="checkbox" id="showLabels" checked> Show Labels</label>
-      <label class="toggle"><input type="checkbox" id="showOrbit" checked> Show Orbit</label>
-      <label class="toggle"><input type="checkbox" id="showQuarks"> Show Quarks</label>
-    </div>
-    <h2>Hydrogen Atom Masterclass</h2>
-    <p><strong>Hydrogen (H)</strong> – The simplest and most abundant element in the universe...</p>
-    <!-- Add full content as needed -->
-  </div>
+<div id="viewer"></div>
+<div id="info">
+<div>
+<label class="toggle"><input type="checkbox" id="showLabels" checked> Show Labels</label>
+<label class="toggle"><input type="checkbox" id="showOrbit" checked> Show Orbit</label>
+<label class="toggle"><input type="checkbox" id="showQuarks"> Show Quarks</label>
+</div>
+<h2>Hydrogen Atom Masterclass</h2>
+<p><strong>Hydrogen (H)</strong> – The simplest and most abundant element in the universe...</p>
+</div>
 
-  <script>
-    const viewer = $3Dmol.createViewer("viewer", {backgroundColor:"black"});
+<script>
+const viewer = $3Dmol.createViewer("viewer",{backgroundColor:"black"});
 
-    let electron = null;
-    let electronLabel = null;
-    let electronTheta = 0;
+// Static proton & orbit
+viewer.addSphere({center:{x:0,y:0,z:0}, radius:0.3, color:"red", alpha:0.6, wireframe:true});
+if(document.getElementById("showOrbit").checked){
+  const segments=50, points=[];
+  for(let i=0;i<=segments;i++){ let t=2*Math.PI*(i/segments); points.push({x:1.2*Math.cos(t),y:1.2*Math.sin(t),z:0}); }
+  viewer.addCurve({points,color:"#fff",linewidth:2});
+}
+if(document.getElementById("showLabels").checked){
+  viewer.addLabel("Proton",{position:{x:0,y:0.5,z:0},backgroundColor:"red",fontColor:"white",fontSize:14});
+}
 
-    let quarks = [];
-    let quarkSpheres = [];
-    let quarkLabels = [];
+// Dynamic objects
+let electronTheta=0;
+let electronSphere=null;
+let electronLabel=null;
+let quarks=[], quarkSpheres=[], quarkLabels=[];
 
-    function addOrbit(radius){
-      const segments = 50;
-      const points = [];
-      for(let i=0;i<=segments;i++){
-        let t = 2*Math.PI*(i/segments);
-        points.push({x:radius*Math.cos(t), y:radius*Math.sin(t), z:0});
-      }
-      return viewer.addCurve({points,color:"#ffffff",linewidth:2});
-    }
+// Initialize quarks
+function initQuarks(){
+  quarks=[], quarkSpheres=[], quarkLabels=[];
+  if(!document.getElementById("showQuarks").checked) return;
+  const qColors=["#ff0000","#00ff00","#0000ff"];
+  const qPositions=[{x:0.1,y:0.1,z:0},{x:-0.1,y:0.1,z:0},{x:0,y:-0.1,z:0}];
+  for(let i=0;i<3;i++){
+    quarks.push({x:qPositions[i].x,y:qPositions[i].y,z:qPositions[i].z,color:qColors[i]});
+  }
+}
 
-    function buildStatic(){
-      viewer.removeAllShapes();
-      viewer.removeAllLabels();
-      quarks = [];
-      quarkSpheres = [];
-      quarkLabels = [];
+// Update & render dynamic shapes
+function renderDynamic(){
+  // Electron
+  electronTheta+=0.03;
+  const ex=1.2*Math.cos(electronTheta), ey=1.2*Math.sin(electronTheta);
+  if(electronSphere) viewer.removeShape(electronSphere);
+  electronSphere = viewer.addSphere({center:{x:ex,y:ey,z:0}, radius:0.15,color:"yellow"});
+  if(document.getElementById("showLabels").checked){
+    if(electronLabel) electronLabel.setPosition({x:ex+0.3,y:ey+0.3,z:0});
+    else electronLabel=viewer.addLabel("Electron",{position:{x:ex+0.3,y:ey+0.3,z:0},backgroundColor:"yellow",fontColor:"black",fontSize:12});
+  }
 
-      // Proton
-      viewer.addSphere({center:{x:0,y:0,z:0}, radius:0.3, color:"red", alpha:0.6, wireframe:true});
-
-      // Orbit
-      if(document.getElementById("showOrbit").checked){
-        addOrbit(1.2);
-      }
-
-      // Quarks
-      if(document.getElementById("showQuarks").checked){
-        const qColors = ["#ff0000","#00ff00","#0000ff"];
-        const qPositions = [{x:0.1,y:0.1,z:0},{x:-0.1,y:0.1,z:0},{x:0,y:-0.1,z:0}];
-        for(let i=0;i<3;i++){
-          const q = {x:qPositions[i].x, y:qPositions[i].y, z:qPositions[i].z, color:qColors[i]};
-          quarks.push(q);
-          quarkSpheres.push(viewer.addSphere({center:q, radius:0.1, color:q.color, alpha:0.8}));
-          if(document.getElementById("showLabels").checked){
-            quarkLabels.push(viewer.addLabel(
-              q.color!="#0000ff"?"Up Quark":"Down Quark",
-              {position:q, backgroundColor:q.color, fontColor:"white", fontSize:10}
-            ));
-          } else {
-            quarkLabels.push(null);
-          }
-        }
-      }
-
-      // Proton label
+  // Quarks
+  quarkSpheres.forEach(s=>viewer.removeShape(s));
+  quarkSpheres=[];
+  quarkLabels.forEach(l=>l&&l.setPosition({x:0,y:0,z:0})); // hide temporarily
+  quarkLabels=[];
+  if(document.getElementById("showQuarks").checked){
+    quarks.forEach((q,i)=>{
+      q.x+=(Math.random()-0.5)*0.01;
+      q.y+=(Math.random()-0.5)*0.01;
+      q.z+=(Math.random()-0.5)*0.01;
+      quarkSpheres.push(viewer.addSphere({center:q,radius:0.1,color:q.color,alpha:0.8}));
       if(document.getElementById("showLabels").checked){
-        viewer.addLabel("Proton",{position:{x:0,y:0.5,z:0}, backgroundColor:"red", fontColor:"white", fontSize:14});
-      }
-
-      // Electron (initial)
-      if(!electron) electron = viewer.addSphere({center:{x:1.2,y:0,z:0}, radius:0.15, color:"yellow"});
-      if(!electronLabel && document.getElementById("showLabels").checked)
-        electronLabel = viewer.addLabel("Electron",{position:{x:1.5,y:0.3,z:0}, backgroundColor:"yellow", fontColor:"black", fontSize:12});
-    }
-
-    function animate(){
-      electronTheta += 0.03;
-      const ex = 1.2*Math.cos(electronTheta);
-      const ey = 1.2*Math.sin(electronTheta);
-
-      // Update electron
-      if(electron) viewer.removeShape(electron);
-      electron = viewer.addSphere({center:{x:ex,y:ey,z:0}, radius:0.15, color:"yellow"});
-      if(electronLabel){
-        electronLabel.setPosition({x:ex+0.3,y:ey+0.3,z:0});
-      }
-
-      // Update quarks
-      if(document.getElementById("showQuarks").checked){
-        for(let i=0;i<quarks.length;i++){
-          quarks[i].x += (Math.random()-0.5)*0.01;
-          quarks[i].y += (Math.random()-0.5)*0.01;
-          quarks[i].z += (Math.random()-0.5)*0.01;
-
-          viewer.removeShape(quarkSpheres[i]);
-          quarkSpheres[i] = viewer.addSphere({center:quarks[i], radius:0.1, color:quarks[i].color, alpha:0.8});
-          if(quarkLabels[i]) quarkLabels[i].setPosition(quarks[i]);
-        }
-      }
-
-      viewer.render();
-      requestAnimationFrame(animate);
-    }
-
-    ["showLabels","showOrbit","showQuarks"].forEach(id=>{
-      document.getElementById(id).addEventListener("change", buildStatic);
+        quarkLabels.push(viewer.addLabel(q.color!="#0000ff"?"Up Quark":"Down Quark",{position:q,backgroundColor:q.color,fontColor:"white",fontSize:10}));
+      } else quarkLabels.push(null);
     });
+  }
 
-    buildStatic();
-    viewer.zoomTo();
-    animate();
-  </script>
+  viewer.render();
+  requestAnimationFrame(renderDynamic);
+}
+
+// Toggle handlers
+["showLabels","showOrbit","showQuarks"].forEach(id=>{
+  document.getElementById(id).addEventListener("change", ()=>{
+    viewer.removeAllShapes();
+    // rebuild proton & orbit
+    viewer.addSphere({center:{x:0,y:0,z:0}, radius:0.3, color:"red", alpha:0.6, wireframe:true});
+    if(document.getElementById("showOrbit").checked){
+      const segments=50, points=[];
+      for(let i=0;i<=segments;i++){ let t=2*Math.PI*(i/segments); points.push({x:1.2*Math.cos(t),y:1.2*Math.sin(t),z:0}); }
+      viewer.addCurve({points,color:"#fff",linewidth:2});
+    }
+    if(document.getElementById("showLabels").checked){
+      viewer.addLabel("Proton",{position:{x:0,y:0.5,z:0},backgroundColor:"red",fontColor:"white",fontSize:14});
+    }
+    initQuarks();
+  });
+});
+
+// Init
+initQuarks();
+renderDynamic();
+viewer.zoomTo();
+</script>
 </body>
 </html>
