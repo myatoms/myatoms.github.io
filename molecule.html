@@ -1,418 +1,192 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Molecule Simulator</title>
-  <!-- 3Dmol.js -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Molecule Simulator - Static Educational Version</title>
   <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
   <style>
-    body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:#0b1220; color:#e6eef8; }
-    #app { display:flex; height:100vh; }
-    #left { width:380px; min-width:300px; background:#0f1724; padding:18px; box-sizing:border-box; overflow:auto; border-right:1px solid rgba(255,255,255,0.03); }
-    #viewer { flex:1; position:relative; }
-    h1 { margin:0 0 10px 0; font-size:20px; color:#9be7ff; }
-    label { display:block; margin-top:12px; font-size:13px; color:#bcdff8; }
-    input[type="text"] { width:100%; padding:8px 10px; margin-top:6px; border-radius:6px; border:1px solid rgba(255,255,255,0.06); background:#071023; color:#e6eef8; box-sizing:border-box; }
-    button { margin-top:10px; padding:10px 14px; border-radius:8px; border:0; cursor:pointer; background:#12a4ff; color:#002234; font-weight:600; }
-    .row { display:flex; gap:8px; align-items:center; margin-top:8px; }
-    .col { display:flex; flex-direction:column; }
-    .small { font-size:12px; color:#9dbadf; }
-    .toggle { display:flex; align-items:center; gap:8px; margin-top:8px; }
-    input[type="range"] { width:100%; }
-    .footer { margin-top:18px; font-size:12px; color:#8faed4; }
-    .credits { margin-top:8px; font-size:12px; color:#8faed4; }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #000000; /* all black */
+      color: white;
+    }
+    #controls {
+      width: 300px;
+      padding: 15px;
+      background-color: #0f1724;
+      box-sizing: border-box;
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      overflow-y: auto;
+    }
+    #viewer {
+      position: absolute;
+      left: 300px;
+      top: 0;
+      right: 0;
+      bottom: 0;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 6px;
+      margin-top: 5px;
+      margin-bottom: 10px;
+      border-radius: 5px;
+      border: 1px solid #444;
+      background-color: #071023;
+      color: #fff;
+    }
+    button {
+      padding: 8px 12px;
+      border-radius: 5px;
+      border: none;
+      background-color: #12a4ff;
+      color: #002234;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+      margin-bottom: 3px;
+      font-size: 14px;
+      color: #bcdff8;
+    }
+    .toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 5px;
+    }
+    .small {
+      font-size: 12px;
+      color: #9dbadf;
+    }
   </style>
 </head>
 <body>
-  <div id="app">
-    <div id="left">
-      <h1>Molecule Simulator</h1>
-      <label>Enter molecule name or formula (e.g. <span class="small">dihydrogen oxide</span> or <span class="small">H2O</span>)</label>
-      <input id="molInput" type="text" placeholder="water, H2O, CH4, CO2, ammonia, ethanol..." value="dihydrogen oxide" />
-      <div class="row">
-        <button id="confirmBtn">Confirm & Build</button>
-        <button id="presetBtn">Load Presets</button>
-      </div>
+  <div id="controls">
+    <h2>Molecule Simulator</h2>
+    <label>Molecule name or formula:</label>
+    <input id="molInput" type="text" placeholder="H2O, CH4, NH3, CO2..." value="H2O">
+    <button id="confirmBtn">Render Molecule</button>
 
-      <label>Performance / View</label>
-      <div class="toggle">
-        <input type="checkbox" id="physicsToggle" checked />
-        <label for="physicsToggle" class="small">Physics (relaxation) ON</label>
-      </div>
-      <div class="toggle">
-        <input type="checkbox" id="labelsToggle" checked />
-        <label for="labelsToggle" class="small">Show atom labels</label>
-      </div>
-      <div class="toggle">
-        <input type="checkbox" id="bondsToggle" checked />
-        <label for="bondsToggle" class="small">Show bonds</label>
-      </div>
-      <div class="toggle">
-        <input type="checkbox" id="fastRendering" />
-        <label for="fastRendering" class="small">Low quality rendering (faster)</label>
-      </div>
-
-      <label>Simulation speed</label>
-      <input id="simSpeed" type="range" min="0" max="2" step="0.01" value="1" />
-
-      <label>Steps per frame (higher = slower & more accurate)</label>
-      <input id="stepsPerFrame" type="range" min="1" max="10" step="1" value="3" />
-
-      <div class="credits">
-        <strong>Examples:</strong> water, dihydrogen oxide, H2, O2, CO2, methane, CH4, ammonia, NH3, ethanol, C2H6O
-      </div>
-
-      <div class="footer">Drag in the 3D view to rotate. Use mouse wheel to zoom. Built with 3Dmol.js and a small physics relaxation.</div>
+    <div class="toggle">
+      <input type="checkbox" id="showLabels" checked>
+      <label for="showLabels" class="small">Show atom labels</label>
+    </div>
+    <div class="toggle">
+      <input type="checkbox" id="showBonds" checked>
+      <label for="showBonds" class="small">Show bonds</label>
     </div>
 
-    <div id="viewer"></div>
+    <div class="small">
+      <p>Static educational 3D visualization. Atoms are displayed with approximate covalent radii. Nuclei shown in red/transparent. Bonds are cylinders.</p>
+    </div>
   </div>
 
+  <div id="viewer"></div>
+
   <script>
-    // ------------- Utility data -------------
-    const covalentRadii = {
-      H: 0.31, He: 0.28, Li: 1.28, Be: 0.96, B: 0.84, C: 0.76, N: 0.71, O: 0.66, F: 0.57, Ne: 0.58,
-      Na:1.66, Mg:1.41, Al:1.21, Si:1.11, P:1.07, S:1.05, Cl:1.02, Ar:1.06, K:2.03, Ca:1.76,
-      // add more if needed...
-    };
-    const elementColors = {
-      H:'#FFFFFF', C:'#808080', N:'#3050F8', O:'#FF0D0D', F:'#90E050', Cl:'#1FF01F', S:'#FFFF30', P:'#FFA500',
-      Li:'#CC80FF', Na:'#AB5CF2', Mg:'#8AFF00', // etc
-    };
-    const defaultColor = '#CCDDFF';
-    const valences = {
-      H:1, He:0, Li:1, Be:2, B:3, C:4, N:3, O:2, F:1, Na:1, Mg:2, Al:3, Si:4, P:3, S:2, Cl:1
-    };
+    const viewer = $3Dmol.createViewer("viewer", { backgroundColor: "black", antialias: true });
+    
+    const covalentRadii = { H: 0.31, C: 0.76, N: 0.71, O: 0.66, F: 0.57, P: 1.07, S: 1.05, Cl: 1.02 };
+    const elementColors = { H: "#FFFFFF", C: "#808080", N: "#3050F8", O: "#FF0D0D", P: "#FFA500", S: "#FFFF30", Cl: "#1FF01F" };
 
-    // common name -> formula map
     const nameMap = {
-      'water':'H2O', 'dihydrogen oxide':'H2O', 'hydrogen peroxide':'H2O2',
-      'methane':'CH4','ammonia':'NH3','carbon dioxide':'CO2','oxygen':'O2',
-      'ethanol':'C2H6O','acetone':'C3H6O', 'hydrogen':'H2','nitrogen':'N2',
-      'benzene':'C6H6'
+      'water':'H2O', 'dihydrogen oxide':'H2O',
+      'methane':'CH4','ammonia':'NH3','carbon dioxide':'CO2',
+      'ethanol':'C2H6O'
     };
 
-    // ------------- 3Dmol viewer init -------------
-    const viewer = $3Dmol.createViewer('viewer', {backgroundColor:'#071126', antialias:true});
-    viewer.setBackgroundColor(0x071126);
+    let atoms = [];
+    let bonds = [];
 
-    // molecule data structure
-    let atoms = []; // {id, elem, pos:{x,y,z}, vel:{x,y,z}, mass, radius}
-    let bonds = []; // {a,b,restLength}
-
-    // simulation parameters (configurable by UI)
-    let params = {
-      physicsOn: true,
-      stepsPerFrame: 3,
-      simSpeed: 1.0,
-      showLabels: true,
-      showBonds: true,
-      lowQuality: false
-    };
-
-    // helpers
-    function randUnitSphere() {
-      // produce roughly uniform direction
-      const u = Math.random();
-      const v = Math.random();
-      const theta = 2*Math.PI*u;
-      const phi = Math.acos(2*v-1);
-      const r = Math.cbrt(Math.random());
-      return { x: r*Math.sin(phi)*Math.cos(theta), y: r*Math.sin(phi)*Math.sin(theta), z: r*Math.cos(phi) };
-    }
-    function norm(v){ return Math.sqrt(v.x*v.x + v.y*v.y + v.z*v.z) || 1e-9; }
-    function sub(a,b){ return {x:a.x-b.x, y:a.y-b.y, z:a.z-b.z}; }
-    function add(a,b){ return {x:a.x+b.x, y:a.y+b.y, z:a.z+b.z}; }
-    function scale(v,s){ return {x:v.x*s, y:v.y*s, z:v.z*s}; }
-
-    // parse formulas like C2H6O or H2O, or interpret common names
     function parseInput(input) {
-      if(!input) return null;
       input = input.trim().toLowerCase();
       if(nameMap[input]) input = nameMap[input];
-      // Normalize common english words: dihydrogen oxide -> H2O mapping handled above
-      // If looks like formula (letters+digits), expand
-      const formula = input.replace(/\s+/g,'');
-      // Simple regex for element symbols and optional counts
+      input = input.replace(/\s+/g,'');
       const re = /([A-Z][a-z]?)(\d*)/g;
-      // If input maybe lower-case formula like h2o, transform to correct capitalization
-      let standardized = formula.replace(/([a-z]{1,2})(\d*)/g, (m, el, n) => {
-        // If element length 2 and original lower-case, attempt to uppercase first letter
-        if(el.length===2) el = el[0].toUpperCase() + el[1].toLowerCase();
-        else el = el.toUpperCase();
-        return el + n;
-      });
-      // If the input contains characters not matching element pattern, fallback
-      if(!/^[A-Za-z0-9]+$/.test(standardized)) {
-        // try splitting words and mapping via nameMap
-        if(nameMap[input]) standardized = nameMap[input];
-        else return null;
-      }
-      // Now apply regex
+      input = input.replace(/([a-z]{1,2})(\d*)/g, (m, el, n) => el.length === 2 ? el[0].toUpperCase() + el[1].toLowerCase() : el.toUpperCase() + n);
       let m; let parsed = [];
-      while ((m = re.exec(standardized)) !== null) {
-        const el = m[1];
-        const cnt = m[2] ? parseInt(m[2]) : 1;
-        parsed.push({el, cnt});
+      while((m = re.exec(input)) !== null) {
+        const el = m[1]; const cnt = m[2]?parseInt(m[2]):1;
+        parsed.push({el,cnt});
       }
-      if(parsed.length===0) return null;
-      // Expand into atom list
-      const atomList = [];
-      let id=0;
-      parsed.forEach(p => {
-        for(let i=0;i<p.cnt;i++){
-          atomList.push({id: id++, elem: p.el});
-        }
-      });
+      let atomList = [], id=0;
+      parsed.forEach(p => { for(let i=0;i<p.cnt;i++) atomList.push({id:id++, elem:p.el}); });
       return atomList;
     }
 
-    // Build initial positions and masses/radii
     function initializeMolecule(atomList) {
-      atoms = [];
-      bonds = [];
-      // set atoms with positions on small cloud, mass ~ atomic number (approx), radius via covalent radius
-      for(let i=0;i<atomList.length;i++){
-        const el = atomList[i].elem;
-        const r = covalentRadii[el] || 0.9;
-        const pos = scale(randUnitSphere(), 1.2 * (0.5 + r)); // scatter proportional to radius
-        atoms.push({
-          id: atomList[i].id,
-          elem: el,
-          pos: pos,
-          vel: {x:0,y:0,z:0},
-          mass: (r*10) + 1,
-          radius: r*0.25 + 0.18 // visual radius
-        });
-      }
-      // Heuristic bonding: connect atoms until valences satisfied and distance threshold
-      assignBondsGreedy();
-    }
-
-    // Heuristic bonding algorithm (simple, designed for small molecules)
-    function assignBondsGreedy() {
-      bonds = [];
-      const n = atoms.length;
-      // start with distances between all atoms based on covalent radii sums
-      // create candidate edges with weight = sum radii * 1.0
-      const candidates = [];
-      for(let i=0;i<n;i++){
-        for(let j=i+1;j<n;j++){
-          const ri = covalentRadii[atoms[i].elem] || 0.9;
-          const rj = covalentRadii[atoms[j].elem] || 0.9;
-          // starting positions might be scattered; prefer connecting smallish distances
-          const rest = (ri + rj) * 0.9; // target bond length estimate
-          const currentDist = norm(sub(atoms[i].pos, atoms[j].pos));
-          const score = currentDist / rest;
-          candidates.push({i,j,rest,score});
-        }
-      }
-      // sort candidates by score ascending (prefer nearer)
-      candidates.sort((a,b)=>a.score-b.score);
-
-      // valence trackers
-      const avail = atoms.map(a => (valences[a.elem] != null ? valences[a.elem] : 1));
-      // greedy add bonds if both have available valence and distance reasonable
-      for(const c of candidates) {
-        if(avail[c.i] <= 0 || avail[c.j] <= 0) continue;
-        // accept if score < threshold (1.6) OR special-case small molecules
-        if(c.score < 1.6) {
-          bonds.push({a:c.i, b:c.j, restLength:c.rest});
-          avail[c.i]--; avail[c.j]--;
-        }
-      }
-
-      // fallback: if no bonds created (e.g. single-atom or parsing issue), try to at least make a chain
-      if(bonds.length === 0 && atoms.length > 1) {
-        for(let i=0;i<atoms.length-1;i++){
-          bonds.push({a:i, b:i+1, restLength: (covalentRadii[atoms[i].elem]||0.9) + (covalentRadii[atoms[i+1].elem]||0.9)});
-        }
-      }
-
-      // compute restLength more accurately from covalent radii sums (if present)
-      bonds.forEach(b => {
-        const ra = covalentRadii[atoms[b.a].elem] || 0.9;
-        const rb = covalentRadii[atoms[b.b].elem] || 0.9;
-        b.restLength = (ra + rb) * 0.95;
+      atoms = []; bonds = [];
+      // scatter atoms roughly in space
+      const spacing = 1.5;
+      atomList.forEach((a,i) => {
+        const angle = i * (2*Math.PI/atomList.length);
+        const x = spacing * Math.cos(angle);
+        const y = spacing * Math.sin(angle);
+        const z = (i % 2) * spacing * 0.5;
+        atoms.push({ id:a.id, elem:a.elem, pos:{x,y,z} });
       });
+      // simple heuristic bonds (linear chain)
+      for(let i=0;i<atoms.length-1;i++) {
+        bonds.push({a:i,b:i+1});
+      }
     }
-
-    // add rendering (spheres and cylinders)
-    let renderObjects = { spheres:[], cylinders:[], labels:[] };
 
     function renderMolecule() {
       viewer.removeAllShapes();
       viewer.removeAllLabels();
-      renderObjects = { spheres:[], cylinders:[], labels:[] };
-      // spheres
-      for(const at of atoms) {
-        const color = elementColors[at.elem] || defaultColor;
-        const atomOpts = { center: at.pos, radius: params.lowQuality ? at.radius*0.8 : at.radius, color: color, alpha:1.0 };
-        const shape = viewer.addSphere(atomOpts);
-        renderObjects.spheres.push(shape);
-        if(params.showLabels) {
-          const lab = viewer.addLabel(at.elem, { position: at.pos, backgroundColor: 'rgba(0,0,0,0.6)', fontColor:'#fff', fontSize:12 });
-          renderObjects.labels.push(lab);
-        }
-      }
-      // bonds (cylinders)
-      if(params.showBonds) {
-        for(const b of bonds) {
+      const showLabels = document.getElementById("showLabels").checked;
+      const showBonds = document.getElementById("showBonds").checked;
+
+      // draw nuclei (red transparent)
+      atoms.forEach(at => {
+        viewer.addSphere({center: at.pos, radius: 0.25, color:"#FF0000", alpha:0.5});
+      });
+
+      // draw atoms on top
+      atoms.forEach(at => {
+        const color = elementColors[at.elem] || "#CCCCCC";
+        const radius = covalentRadii[at.elem]? covalentRadii[at.elem]*0.3 : 0.3;
+        viewer.addSphere({center: at.pos, radius: radius, color: color});
+        if(showLabels) viewer.addLabel(at.elem, {position: at.pos, backgroundColor:'rgba(0,0,0,0.6)', fontColor:'#fff', fontSize:12});
+      });
+
+      if(showBonds) {
+        bonds.forEach(b => {
           const a = atoms[b.a], c = atoms[b.b];
-          const mid = { x:(a.pos.x+c.pos.x)/2, y:(a.pos.y+c.pos.y)/2, z:(a.pos.z+c.pos.z)/2 };
-          const radius = params.lowQuality ? 0.06 : 0.09;
-          viewer.addCylinder({ start: a.pos, end: c.pos, radius: radius, fromCap:true, toCap:true, color:'#cccccc', alpha:1.0 });
-        }
+          viewer.addCylinder({start:a.pos,end:c.pos,radius:0.08,color:"#AAAAAA"});
+        });
       }
+
       viewer.zoomTo();
       viewer.render();
     }
 
-    // Simple physics integrator and force model
-    function simulateStep(dt) {
-      // parameters tunable for stability
-      const kBond = 60.0;          // bond spring stiffness
-      const nonbondEps = 0.05;     // nonbond strength
-      const nonbondSigma = 0.5;    // nonbond preferred separation
-      const damping = 0.12;        // velocity damping
-      // Zero forces
-      const forces = atoms.map(()=>({x:0,y:0,z:0}));
-
-      // bond springs
-      for(const b of bonds){
-        const a = atoms[b.a], c = atoms[b.b];
-        const r = sub(c.pos, a.pos);
-        const d = norm(r);
-        const diff = d - b.restLength;
-        // avoid division by zero
-        const dir = (d>1e-6) ? scale(r, 1/d) : {x: Math.random()*0.001, y:Math.random()*0.001, z:Math.random()*0.001};
-        const f = -kBond * diff;
-        const fvec = scale(dir, f);
-        forces[b.a] = add(forces[b.a], fvec);
-        forces[b.b] = add(forces[b.b], scale(fvec, -1));
-      }
-
-      // nonbonded short-range repulsion (simple LJ-like but truncated)
-      for(let i=0;i<atoms.length;i++){
-        for(let j=i+1;j<atoms.length;j++){
-          // skip if bonded
-          let bonded = false;
-          for(const b of bonds){ if((b.a===i && b.b===j) || (b.a===j && b.b===i)){ bonded = true; break; } }
-          if(bonded) continue;
-          const ai = atoms[i], aj = atoms[j];
-          const r = sub(aj.pos, ai.pos);
-          const d = norm(r);
-          const sigma = nonbondSigma;
-          const dir = (d>1e-6) ? scale(r,1/d) : {x:Math.random()*0.001,y:Math.random()*0.001,z:Math.random()*0.001};
-          // simple repulsive potential ~ 1/d^12 term simplified to avoid blow-ups
-          const rep = nonbondEps * Math.pow(sigma / (d + 1e-6), 12);
-          const fvec = scale(dir, rep);
-          forces[i] = add(forces[i], scale(fvec, -1));
-          forces[j] = add(forces[j], fvec);
-        }
-      }
-
-      // integrate velocities & positions (semi-implicit Euler)
-      for(let i=0;i<atoms.length;i++){
-        const a = atoms[i];
-        const acc = scale(forces[i], 1.0 / (a.mass || 1.0));
-        // apply acceleration (scaled by dt)
-        a.vel.x += acc.x * dt;
-        a.vel.y += acc.y * dt;
-        a.vel.z += acc.z * dt;
-        // damping
-        a.vel.x *= (1 - damping);
-        a.vel.y *= (1 - damping);
-        a.vel.z *= (1 - damping);
-        // integrate position
-        a.pos.x += a.vel.x * dt;
-        a.pos.y += a.vel.y * dt;
-        a.pos.z += a.vel.z * dt;
-      }
-    }
-
-    // animation loop
-    let lastTime = performance.now();
-    function animate() {
-      const tnow = performance.now();
-      let dt = (tnow - lastTime) / 1000.0; // seconds
-      lastTime = tnow;
-      if(dt > 0.1) dt = 0.1;
-      // scale dt by simSpeed
-      dt *= params.simSpeed;
-      const steps = params.stepsPerFrame;
-      if(params.physicsOn) {
-        for(let s=0;s<steps;s++){
-          simulateStep(dt/steps);
-        }
-      }
-      // update rendered positions
-      viewer.removeAllShapes();
-      viewer.removeAllLabels();
-      // spheres
-      for(const at of atoms) {
-        const color = elementColors[at.elem] || defaultColor;
-        viewer.addSphere({ center: at.pos, radius: params.lowQuality ? at.radius*0.8 : at.radius, color: color });
-        if(params.showLabels) viewer.addLabel(at.elem, { position: at.pos, backgroundColor:'rgba(0,0,0,0.6)', fontColor:'#fff', fontSize:12 });
-      }
-      if(params.showBonds) {
-        for(const b of bonds) {
-          const a = atoms[b.a], c = atoms[b.b];
-          viewer.addCylinder({ start: a.pos, end: c.pos, radius: params.lowQuality ? 0.06 : 0.09, color:'#d0d0d0' });
-        }
-      }
-      viewer.render();
-      requestAnimationFrame(animate);
-    }
-
-    // UI interactions
-    document.getElementById('confirmBtn').addEventListener('click', () => {
-      const raw = document.getElementById('molInput').value;
-      const atomList = parseInput(raw);
-      if(!atomList) {
-        alert('Could not parse molecule. Try a formula like H2O or a common name like "water" or "ethanol".');
-        return;
-      }
+    document.getElementById("confirmBtn").addEventListener("click", () => {
+      const atomList = parseInput(document.getElementById("molInput").value);
+      if(!atomList) return alert("Cannot parse molecule.");
       initializeMolecule(atomList);
       renderMolecule();
     });
 
-    document.getElementById('presetBtn').addEventListener('click', () => {
-      const examples = ['H2O','CH4','CO2','NH3','ethanol','benzene'];
-      const sel = prompt('Type a preset name or formula (examples: ' + examples.join(', ') + '):', examples[0]);
-      if(sel) {
-        document.getElementById('molInput').value = sel;
-      }
-    });
+    // initial demo
+    const demoAtoms = parseInput("H2O");
+    initializeMolecule(demoAtoms);
+    renderMolecule();
 
-    // toggles and sliders
-    document.getElementById('physicsToggle').addEventListener('change', (e)=> { params.physicsOn = e.target.checked; });
-    document.getElementById('labelsToggle').addEventListener('change', (e)=> { params.showLabels = e.target.checked; });
-    document.getElementById('bondsToggle').addEventListener('change', (e)=> { params.showBonds = e.target.checked; });
-    document.getElementById('fastRendering').addEventListener('change', (e)=> { params.lowQuality = e.target.checked; });
-
-    document.getElementById('simSpeed').addEventListener('input', (e)=> { params.simSpeed = parseFloat(e.target.value); });
-    document.getElementById('stepsPerFrame').addEventListener('input', (e)=> { params.stepsPerFrame = parseInt(e.target.value); });
-
-    // initial build for demo
-    (function initDemo(){
-      const atomList = parseInput('dihydrogen oxide'); // H2O
-      initializeMolecule(atomList);
-      renderMolecule();
-      lastTime = performance.now();
-      requestAnimationFrame(animate);
-    })();
-
-    // resize handler to make viewer fill panel
-    function resizeViewer() {
-      const v = document.getElementById('viewer');
+    window.addEventListener("resize", ()=>{
+      const v = document.getElementById("viewer");
       viewer.setSize(v.clientWidth, v.clientHeight);
       viewer.render();
-    }
-    window.addEventListener('resize', resizeViewer);
-    setTimeout(resizeViewer, 200);
-
+    });
   </script>
 </body>
 </html>
