@@ -80,9 +80,17 @@
   <script>
     let viewer = $3Dmol.createViewer("viewer", { backgroundColor: "black" });
 
-    let electronShapeId = null;
-    let electronLabelId = null;
+    let electron = null;
+    let electronLabel = null;
+    let quarkShapes = [null, null, null];
     let theta = 0;
+
+    const quarkPositions = [
+      {x: 0.1, y: 0.1, z: 0},
+      {x: -0.1, y: 0.1, z: 0},
+      {x: 0, y: -0.1, z: 0}
+    ];
+    const quarkColors = ["#ff0000", "#00ff00", "#0000ff"];
 
     // Function to add orbit path
     function addOrbit(radius) {
@@ -93,16 +101,6 @@
         points.push({x: radius * Math.cos(theta), y: radius * Math.sin(theta), z: 0});
       }
       return viewer.addCurve({ points: points, color: "#ffffff", linewidth: 3 });
-    }
-
-    // Function to add quarks inside proton
-    function addQuarks() {
-      // Up quark 1 (red)
-      viewer.addSphere({ center: {x: 0.1, y: 0.1, z: 0}, radius: 0.1, color: "#ff0000", alpha: 0.8 });
-      // Up quark 2 (green)
-      viewer.addSphere({ center: {x: -0.1, y: 0.1, z: 0}, radius: 0.1, color: "#00ff00", alpha: 0.8 });
-      // Down quark (blue)
-      viewer.addSphere({ center: {x: 0, y: -0.1, z: 0}, radius: 0.1, color: "#0000ff", alpha: 0.8 });
     }
 
     // Function to add static labels
@@ -119,8 +117,9 @@
     function buildStatic() {
       viewer.removeAllShapes();
       viewer.removeAllLabels();
-      electronShapeId = null;
-      electronLabelId = null;
+      electron = null;
+      electronLabel = null;
+      quarkShapes = [null, null, null];
 
       // Add proton (semi-transparent for quarks visibility)
       viewer.addSphere({ center: {x:0, y:0, z:0}, radius: 0.3, color: "red", alpha: 0.6, wireframe: true });
@@ -128,11 +127,6 @@
       // Add orbit if checked
       if (document.getElementById("showOrbit").checked) {
         addOrbit(1.2);
-      }
-
-      // Add quarks if checked
-      if (document.getElementById("showQuarks").checked) {
-        addQuarks();
       }
 
       // Add static labels if checked
@@ -143,29 +137,47 @@
       viewer.render();
     }
 
-    // Main render function for dynamic elements (electron)
+    // Main render function for dynamic elements (electron and quarks)
     function renderScene() {
       // Remove old electron
-      if (electronShapeId !== null) {
-        viewer.removeShape(electronShapeId);
+      if (electron !== null) {
+        viewer.removeShape(electron);
+        electron = null;
       }
       // Remove old electron label
-      if (electronLabelId !== null) {
-        viewer.removeLabel(electronLabelId);
+      if (electronLabel !== null) {
+        viewer.removeLabel(electronLabel);
+        electronLabel = null;
       }
 
       // Calculate electron position
       let ex = 1.2 * Math.cos(theta);
       let ey = 1.2 * Math.sin(theta);
 
-      // Add electron and store its ID
-      const electronShape = viewer.addSphere({ center: {x: ex, y: ey, z: 0}, radius: 0.15, color: "yellow" });
-      electronShapeId = electronShape.shapeid;
+      // Add electron
+      electron = viewer.addSphere({ center: {x: ex, y: ey, z: 0}, radius: 0.15, color: "yellow" });
 
-      // Add electron label if labels are shown and store its ID
+      // Add electron label if labels are shown
       if (document.getElementById("showLabels").checked) {
-        const electronLabel = viewer.addLabel("Electron", {position: {x: ex + 0.3, y: ey + 0.3, z:0}, backgroundColor: "yellow", fontColor: "black", fontSize: 12});
-        electronLabelId = electronLabel;
+        electronLabel = viewer.addLabel("Electron", {position: {x: ex + 0.3, y: ey + 0.3, z:0}, backgroundColor: "yellow", fontColor: "black", fontSize: 12});
+      }
+
+      // Handle quarks
+      let showQuarks = document.getElementById("showQuarks").checked;
+      for (let i = 0; i < 3; i++) {
+        if (quarkShapes[i] !== null) {
+          viewer.removeShape(quarkShapes[i]);
+          quarkShapes[i] = null;
+        }
+      }
+      if (showQuarks) {
+        for (let i = 0; i < 3; i++) {
+          let dx = (Math.random() - 0.5) * 0.05;
+          let dy = (Math.random() - 0.5) * 0.05;
+          let dz = (Math.random() - 0.5) * 0.05;
+          let pos = {x: quarkPositions[i].x + dx, y: quarkPositions[i].y + dy, z: quarkPositions[i].z + dz};
+          quarkShapes[i] = viewer.addSphere({ center: pos, radius: 0.1, color: quarkColors[i], alpha: 0.8 });
+        }
       }
 
       viewer.render();
@@ -183,7 +195,7 @@
     toggles.forEach(id => {
       document.getElementById(id).addEventListener("change", () => {
         buildStatic();
-        renderScene(); // Re-add electron immediately
+        renderScene(); // Re-add dynamic elements immediately
       });
     });
 
