@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lithium Atom Masterclass</title>
+  <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Alsina&display=swap" rel="stylesheet">
+  <style>
+    @font-face {
+      font-family: 'Alsina Ultrajada';
+      src: url('Alsina Ultrajada.ttf') format('truetype');
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: 'Alsina Ultrajada', 'Alsina', sans-serif;
+      background: #000000;
+      color: white;
+    }
+    #viewer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: calc(100% - 300px);
+    }
+    #info {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 300px;
+      background: rgba(34, 34, 34, 0.8);
+      color: white;
+      padding: 20px;
+      box-sizing: border-box;
+      font-size: 16px;
+      overflow-y: auto;
+      box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.5);
+    }
+    .toggle {
+      margin-right: 15px;
+    }
+    h2 {
+      color: #ffd700;
+      margin-top: 0;
+    }
+    p {
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div id="viewer"></div>
+
+  <div id="info">
+    <div>
+      <label class="toggle"><input type="checkbox" id="showLabels" checked> Show Labels</label>
+      <label class="toggle"><input type="checkbox" id="showOrbit" checked> Show Orbit</label>
+      <label class="toggle"><input type="checkbox" id="showNucleons"> Show Nucleons</label>
+    </div>
+    <h2>Lithium Atom Masterclass</h2>
+    <p><strong>Lithium (Li)</strong> – The lightest alkali metal and the third element in the periodic table, with atomic number 3. It is a soft, silvery-white metal that is highly reactive and flammable. Visualized here in a simplified Bohr-like model with the nucleus and electron orbits for educational purposes.</p>
+    <p><strong>Atomic Structure:</strong> Lithium has 3 protons and 3 electrons, with the most common isotope (^7Li) having 4 neutrons, giving an atomic mass of approximately 6.94 u. Electrons are arranged in two shells: 2 in the inner shell (1s²) and 1 in the outer shell (2s¹). In quantum mechanics, the outer electron is in a spherical s-orbital.</p>
+    <p><strong>Isotopes:</strong> Two stable isotopes: ^6Li (7.59% abundance, 3 neutrons) and ^7Li (92.41% abundance, 4 neutrons). Radioactive isotopes like ^8Li exist but are unstable.</p>
+    <p><strong>Physical Properties:</strong> Soft, silvery-white metal that tarnishes quickly in air. Density: 0.534 g/cm³. Melting point: 180.5°C; boiling point: 1330°C. Floats on water and oil.</p>
+    <p><strong>Chemical Properties:</strong> Highly reactive alkali metal, reacts vigorously with water to form lithium hydroxide and hydrogen gas. Forms ionic compounds like LiCl, Li₂O. Stored under oil to prevent reaction with moisture and oxygen.</p>
+    <p><strong>History:</strong> Discovered in 1817 by Johan August Arfwedson in the mineral petalite. Isolated electrolytically by William Thomas Brande and Humphry Davy in 1818. Named from Greek "lithos" meaning stone.</p>
+    <p><strong>Abundance and Production:</strong> Makes up about 0.0007% of the universe by mass, produced in Big Bang nucleosynthesis. On Earth, found in minerals like spodumene and lepidolite, and brines. Produced commercially from brine evaporation or ore processing.</p>
+    <p><strong>Uses:</strong> Essential in rechargeable lithium-ion batteries for electronics and electric vehicles. Used in ceramics, glass, lubricants (lithium grease), alloys, and air conditioning. Lithium carbonate is used in psychiatry as a mood stabilizer.</p>
+    <p><strong>Astrophysical Role:</strong> One of the primordial elements from Big Bang nucleosynthesis. Found in stars and used to study stellar evolution.</p>
+    <p><strong>Quantum Significance:</strong> The lithium atom is important in quantum mechanics as a three-electron system, useful for approximation methods like Hartree-Fock. Spectral lines aid in atomic clocks and laser cooling.</p>
+    <p><strong>Biological Importance:</strong> Trace element in humans. Lithium salts treat bipolar disorder and depression. Toxicity can cause kidney issues.</p>
+    <p><strong>Fun Facts:</strong> Lithium is the lightest metal and floats on water while reacting explosively. It gives a crimson color to flames, used in fireworks. Powers most modern portable devices.</p>
+  </div>
+
+  <script>
+    let viewer = $3Dmol.createViewer("viewer", { backgroundColor: "black", antialias: false });
+
+    let electrons = [];
+    let nucleonShapes = [];
+    let theta = 0;
+    let frameCount = 0;
+    const jiggleInterval = 5;
+
+    const nucleusRadius = 0.5;
+    const numProtons = 3;
+    const numNeutrons = 4;
+    const numNucleons = numProtons + numNeutrons;
+    let nucleonPositions = [];
+
+    const fullShellRadii = [1.2, 2.4];
+    const fullElectronsPerShell = [2, 1];
+    let electronPhases = Array(3).fill(0).map(() => Math.random() * 2 * Math.PI);
+
+    function generateNucleonPositions() {
+      nucleonPositions = [];
+      for (let i = 0; i < numNucleons; i++) {
+        const r = Math.random() * (nucleusRadius - 0.1);
+        const phi = Math.random() * 2 * Math.PI;
+        const costheta = Math.random() * 2 - 1;
+        const sintheta = Math.sqrt(1 - costheta * costheta);
+        const x = r * sintheta * Math.cos(phi);
+        const y = r * sintheta * Math.sin(phi);
+        const z = r * costheta;
+        nucleonPositions.push({x, y, z});
+      }
+    }
+
+    function addOrbit(radius) {
+      const segments = 50;
+      const points = [];
+      for (let i = 0; i <= segments; i++) {
+        let theta = 2 * Math.PI * (i / segments);
+        points.push({x: radius * Math.cos(theta), y: radius * Math.sin(theta), z: 0});
+      }
+      return viewer.addCurve({ points: points, color: "#ffffff", linewidth: 3 });
+    }
+
+    function addStaticLabels(currentShellRadii) {
+      viewer.addLabel("Nucleus", {position: {x:0, y: nucleusRadius + 0.5, z:0}, backgroundColor: "red", fontColor: "white", fontSize: 14});
+      const midShell = Math.floor(currentShellRadii.length / 2);
+      viewer.addLabel("Electrons", {position: {x: currentShellRadii[midShell] + 0.5, y:0, z:0}, backgroundColor: "yellow", fontColor: "black", fontSize: 14});
+      if (document.getElementById("showNucleons").checked && document.getElementById("showLabels").checked) {
+        viewer.addLabel("Proton", {position: {x:0.2, y:0.2, z:0}, backgroundColor: "red", fontColor: "white", fontSize: 10});
+        viewer.addLabel("Neutron", {position: {x:-0.2, y:-0.2, z:0}, backgroundColor: "blue", fontColor: "white", fontSize: 10});
+      }
+    }
+
+    function buildStatic() {
+      viewer.removeAllShapes();
+      viewer.removeAllLabels();
+      electrons = [];
+      nucleonShapes = [];
+
+      viewer.addSphere({ center: {x:0, y:0, z:0}, radius: nucleusRadius, color: "red", alpha: 0.6, wireframe: true });
+
+      let currentShellRadii = fullShellRadii;
+
+      if (document.getElementById("showOrbit").checked) {
+        currentShellRadii.forEach(r => addOrbit(r));
+      }
+
+      if (document.getElementById("showLabels").checked) {
+        addStaticLabels(currentShellRadii);
+      }
+
+      viewer.render();
+    }
+
+    function renderScene() {
+      electrons.forEach(e => viewer.removeShape(e));
+      electrons = [];
+
+      let currentShellRadii = fullShellRadii;
+      let currentElectronsPerShell = fullElectronsPerShell;
+
+      let phaseIdx = 0;
+      for (let s = 0; s < currentShellRadii.length; s++) {
+        const r = currentShellRadii[s];
+        const num = currentElectronsPerShell[s];
+        for (let e = 0; e < num; e++) {
+          const phi = theta + electronPhases[phaseIdx];
+          const ex = r * Math.cos(phi);
+          const ey = r * Math.sin(phi);
+          const ez = 0;
+          const shape = viewer.addSphere({ center: {x: ex, y: ey, z: ez}, radius: 0.15, color: "yellow" });
+          electrons.push(shape);
+          phaseIdx++;
+        }
+      }
+
+      let showNucleons = document.getElementById("showNucleons").checked;
+      if (!showNucleons) {
+        nucleonShapes.forEach(s => viewer.removeShape(s));
+        nucleonShapes = [];
+      } else {
+        let needUpdate = (frameCount % jiggleInterval === 0) || (nucleonShapes.length === 0);
+        if (needUpdate) {
+          nucleonShapes.forEach(s => viewer.removeShape(s));
+          nucleonShapes = [];
+          for (let i = 0; i < numNucleons; i++) {
+            let dx = (Math.random() - 0.5) * 0.02;
+            let dy = (Math.random() - 0.5) * 0.02;
+            let dz = (Math.random() - 0.5) * 0.02;
+            let pos = {x: nucleonPositions[i].x + dx, y: nucleonPositions[i].y + dy, z: nucleonPositions[i].z + dz};
+            let color = i < numProtons ? "#ff0000" : "#0000ff";
+            let shape = viewer.addSphere({ center: pos, radius: 0.08, color: color, alpha: 0.8 });
+            nucleonShapes.push(shape);
+          }
+        }
+      }
+
+      viewer.render();
+    }
+
+    function animate() {
+      theta += 0.03;
+      frameCount++;
+      renderScene();
+      requestAnimationFrame(animate);
+    }
+
+    const toggles = ["showLabels", "showOrbit", "showNucleons"];
+    toggles.forEach(id => {
+      document.getElementById(id).addEventListener("change", () => {
+        buildStatic();
+        renderScene();
+      });
+    });
+
+    generateNucleonPositions();
+    buildStatic();
+    viewer.zoomTo();
+    animate();
+  </script>
+</body>
+</html>
