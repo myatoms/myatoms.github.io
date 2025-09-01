@@ -78,12 +78,14 @@
   </div>
 
   <script>
-    let viewer = $3Dmol.createViewer("viewer", { backgroundColor: "black" });
+    let viewer = $3Dmol.createViewer("viewer", { backgroundColor: "black", antialias: false });
 
     let electron = null;
     let electronLabel = null;
     let quarkShapes = [null, null, null];
     let theta = 0;
+    let frameCount = 0;
+    const jiggleInterval = 5;
 
     const quarkPositions = [
       {x: 0.1, y: 0.1, z: 0},
@@ -164,20 +166,28 @@
 
       // Handle quarks
       let showQuarks = document.getElementById("showQuarks").checked;
-      for (let i = 0; i < 3; i++) {
-        if (quarkShapes[i] !== null) {
-          viewer.removeShape(quarkShapes[i]);
-          quarkShapes[i] = null;
-        }
-      }
-      if (showQuarks) {
+      if (!showQuarks) {
         for (let i = 0; i < 3; i++) {
-          let dx = (Math.random() - 0.5) * 0.05;
-          let dy = (Math.random() - 0.5) * 0.05;
-          let dz = (Math.random() - 0.5) * 0.05;
-          let pos = {x: quarkPositions[i].x + dx, y: quarkPositions[i].y + dy, z: quarkPositions[i].z + dz};
-          quarkShapes[i] = viewer.addSphere({ center: pos, radius: 0.1, color: quarkColors[i], alpha: 0.8 });
+          if (quarkShapes[i] !== null) {
+            viewer.removeShape(quarkShapes[i]);
+            quarkShapes[i] = null;
+          }
         }
+      } else {
+        let needUpdate = (frameCount % jiggleInterval === 0) || (quarkShapes[0] === null);
+        if (needUpdate) {
+          for (let i = 0; i < 3; i++) {
+            if (quarkShapes[i] !== null) {
+              viewer.removeShape(quarkShapes[i]);
+            }
+            let dx = (Math.random() - 0.5) * 0.05;
+            let dy = (Math.random() - 0.5) * 0.05;
+            let dz = (Math.random() - 0.5) * 0.05;
+            let pos = {x: quarkPositions[i].x + dx, y: quarkPositions[i].y + dy, z: quarkPositions[i].z + dz};
+            quarkShapes[i] = viewer.addSphere({ center: pos, radius: 0.1, color: quarkColors[i], alpha: 0.8 });
+          }
+        }
+        // else keep existing quarks
       }
 
       viewer.render();
@@ -186,6 +196,7 @@
     // Animation loop using requestAnimationFrame for smoother performance
     function animate() {
       theta += 0.03; // Slightly slower speed for less CPU load
+      frameCount++;
       renderScene();
       requestAnimationFrame(animate);
     }
