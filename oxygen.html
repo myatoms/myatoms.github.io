@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Oxygen Atom Masterclass</title>
+  <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
+  <!-- Google Fonts: Alsina as fallback -->
+  <link href="https://fonts.googleapis.com/css2?family=Alsina&display=swap" rel="stylesheet">
+  <style>
+    @font-face {
+      font-family: 'Alsina Ultrajada';
+      src: url('Alsina Ultrajada.ttf') format('truetype'); /* Assume font file is in the same directory; adjust path and format if needed */
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: 'Alsina Ultrajada', 'Alsina', sans-serif; /* Use local font if available, fallback to Google Alsina */
+      background: #000000;
+      color: white;
+    }
+    #viewer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: calc(100% - 300px); /* Increased space for info */
+    }
+    #info {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 300px;
+      background: rgba(34, 34, 34, 0.8); /* Semi-transparent for beauty */
+      color: white;
+      padding: 20px;
+      box-sizing: border-box;
+      font-size: 16px;
+      overflow-y: auto; /* Scrollable for dense info */
+      box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.5);
+    }
+    .toggle {
+      margin-right: 15px;
+    }
+    h2 {
+      color: #ffd700; /* Gold for headings */
+      margin-top: 0;
+    }
+    p {
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div id="viewer"></div>
+
+  <div id="info">
+    <div>
+      <label class="toggle"><input type="checkbox" id="showLabels" checked> Show Labels</label>
+      <label class="toggle"><input type="checkbox" id="showOrbit" checked> Show Orbit</label>
+      <label class="toggle"><input type="checkbox" id="showNucleons"> Show Nucleons</label>
+    </div>
+    <h2>Oxygen Atom Masterclass</h2>
+    <p><strong>Oxygen (O)</strong> – The third most abundant element in the universe, essential to living organisms and combustion. With atomic number 8, it consists of eight protons and typically eight neutrons in the nucleus, orbited by eight electrons in two shells, as depicted in the classic Bohr model visualization above.</p>
+    <p><strong>Atomic Structure:</strong> Oxygen's atom has an atomic mass of about 15.999 u. The nucleus, positively charged, contains eight protons and eight neutrons, while the negatively charged electrons occupy probabilistic orbitals, simplified here as circular paths for educational purposes. In quantum mechanics, the electron configuration is [He] 2s² 2p⁴, with the 2p orbitals being partially filled.</p>
+    <p><strong>Isotopes:</strong> Oxygen has three stable isotopes: ^16O (99.76% abundance), ^17O (0.04%), and ^18O (0.20%). Fifteen radioisotopes exist, with ^15O having the longest half-life at 122 seconds. Isotopes are used in paleoclimatology and medical imaging.</p>
+    <p><strong>Physical Properties:</strong> Colorless, odorless, tasteless diatomic gas (O₂) at standard conditions. Boiling point: -183°C, melting point: -219°C. Paramagnetic, with density 1.429 g/L (gas). Liquid oxygen is pale blue and magnetic.</p>
+    <p><strong>Chemical Properties:</strong> Highly reactive nonmetal, forms oxides with most elements. Oxidation state usually -2, but also -1 in peroxides. Supports combustion; triplet ground state makes it less reactive than singlet oxygen.</p>
+    <p><strong>History:</strong> Isolated by Carl Wilhelm Scheele in 1771-1772 and Joseph Priestley in 1774. Named by Antoine Lavoisier in 1778 from Greek "oxy" (sharp/acid) and "genes" (forming), though not all acids contain oxygen.</p>
+    <p><strong>Abundance and Production:</strong> Comprises 49.2% of Earth's crust by mass, 29.4% of whole Earth, and 20.95% of atmosphere. Produced industrially via fractional distillation of air or electrolysis of water. Annual production ~100 million tonnes.</p>
+    <p><strong>Uses:</strong> Steel production (55%), chemicals (25%), medical oxygen therapy, welding, rocket propellant, water treatment, and fuel cells. Essential for respiration and photosynthesis.</p>
+    <p><strong>Astrophysical Role:</strong> Formed in stars via fusion; key in stellar nucleosynthesis. Abundant in universe, detected in exoplanet atmospheres and icy moons like Europa.</p>
+    <p><strong>Quantum Significance:</strong> O₂ has triplet ground state with unpaired electrons, explaining paramagnetism. Exactly solvable in some quantum models; spectral lines important in astronomy. Singlet oxygen used in photodynamic therapy.</p>
+    <p><strong>Biological Importance:</strong> Crucial for aerobic respiration, producing ATP. Makes up 65% of human body mass (mostly in water). Produced by photosynthesis; ozone layer protects from UV.</p>
+    <p><strong>Fun Facts:</strong> Oxygen was once thought to be in all acids. Liquid oxygen can be suspended by magnets. The Great Oxidation Event ~2.4 billion years ago dramatically increased atmospheric oxygen. Ozone (O₃) smells like chlorine.</p>
+  </div>
+
+  <script>
+    let viewer = $3Dmol.createViewer("viewer", { backgroundColor: "black", antialias: false });
+
+    let electrons = [];
+    let electronLabels = [];
+    let nucleonShapes = [];
+    let theta = 0;
+    let frameCount = 0;
+    const jiggleInterval = 5;
+
+    const innerRadius = 0.7;
+    const outerRadius = 1.4;
+    const numInnerElectrons = 2;
+    const numOuterElectrons = 6;
+    const nucleusRadius = 0.4;
+    const nucleonRadius = 0.05;
+    const numProtons = 8;
+    const numNeutrons = 8;
+    const nucleonColors = Array(numProtons).fill("#ff0000").concat(Array(numNeutrons).fill("#0000ff"));
+    let nucleonBasePositions = [];
+    for (let i = 0; i < numProtons + numNeutrons; i++) {
+      let angle = 2 * Math.PI * i / (numProtons + numNeutrons);
+      let r = 0.2 * Math.random();
+      nucleonBasePositions.push({
+        x: r * Math.cos(angle),
+        y: r * Math.sin(angle),
+        z: 0
+      });
+    }
+
+    // Function to add orbit path
+    function addOrbit(radius) {
+      const segments = 50;
+      const points = [];
+      for (let i = 0; i <= segments; i++) {
+        let theta = 2 * Math.PI * (i / segments);
+        points.push({x: radius * Math.cos(theta), y: radius * Math.sin(theta), z: 0});
+      }
+      return viewer.addCurve({ points: points, color: "#ffffff", linewidth: 1 });
+    }
+
+    // Function to add static labels
+    function addStaticLabels() {
+      viewer.addLabel("Nucleus", {position: {x:0, y:0.7, z:0}, backgroundColor: "red", fontColor: "white", fontSize: 14});
+      if (document.getElementById("showNucleons").checked) {
+        viewer.addLabel("Proton", {position: {x:0.1, y:0.3, z:0}, backgroundColor: "red", fontColor: "white", fontSize: 10});
+        viewer.addLabel("Neutron", {position: {x: -0.1, y:0.3, z:0}, backgroundColor: "blue", fontColor: "white", fontSize: 10});
+      }
+    }
+
+    // Build static elements
+    function buildStatic() {
+      viewer.removeAllShapes();
+      viewer.removeAllLabels();
+      electrons = [];
+      electronLabels = [];
+      nucleonShapes = [];
+
+      // Add nucleus (semi-transparent for nucleons visibility)
+      viewer.addSphere({ center: {x:0, y:0, z:0}, radius: nucleusRadius, color: "red", alpha: 0.6, wireframe: true });
+
+      // Add orbits if checked
+      if (document.getElementById("showOrbit").checked) {
+        addOrbit(innerRadius);
+        addOrbit(outerRadius);
+      }
+
+      // Add static labels if checked
+      if (document.getElementById("showLabels").checked) {
+        addStaticLabels();
+      }
+
+      viewer.render();
+    }
+
+    // Main render function for dynamic elements (electrons and nucleons)
+    function renderScene() {
+      // Remove old electrons and labels
+      electrons.forEach(shape => viewer.removeShape(shape));
+      electronLabels.forEach(label => viewer.removeLabel(label));
+      electrons = [];
+      electronLabels = [];
+
+      // Add inner electrons
+      for (let i = 0; i < numInnerElectrons; i++) {
+        let e_theta = theta + i * (2 * Math.PI / numInnerElectrons);
+        let ex = innerRadius * Math.cos(e_theta);
+        let ey = innerRadius * Math.sin(e_theta);
+        let electronShape = viewer.addSphere({ center: {x: ex, y: ey, z: 0}, radius: 0.1, color: "yellow" });
+        electrons.push(electronShape);
+      }
+
+      // Add outer electrons
+      for (let i = 0; i < numOuterElectrons; i++) {
+        let e_theta = theta + i * (2 * Math.PI / numOuterElectrons);
+        let ex = outerRadius * Math.cos(e_theta);
+        let ey = outerRadius * Math.sin(e_theta);
+        let electronShape = viewer.addSphere({ center: {x: ex, y: ey, z: 0}, radius: 0.1, color: "yellow" });
+        electrons.push(electronShape);
+      }
+
+      // Add one electron label if labels are shown (on one outer electron for simplicity)
+      if (document.getElementById("showLabels").checked) {
+        let ex = outerRadius * Math.cos(theta);
+        let ey = outerRadius * Math.sin(theta);
+        let electronLabel = viewer.addLabel("Electron", {position: {x: ex + 0.3, y: ey + 0.3, z:0}, backgroundColor: "yellow", fontColor: "black", fontSize: 12});
+        electronLabels.push(electronLabel);
+      }
+
+      // Handle nucleons
+      let showNucleons = document.getElementById("showNucleons").checked;
+      if (!showNucleons) {
+        nucleonShapes.forEach(shape => { if (shape !== null) viewer.removeShape(shape); });
+        nucleonShapes = [];
+      } else {
+        let needUpdate = (frameCount % jiggleInterval === 0) || (nucleonShapes.length === 0);
+        if (needUpdate) {
+          nucleonShapes.forEach(shape => { if (shape !== null) viewer.removeShape(shape); });
+          nucleonShapes = [];
+          for (let i = 0; i < numProtons + numNeutrons; i++) {
+            let dx = (Math.random() - 0.5) * 0.08;
+            let dy = (Math.random() - 0.5) * 0.08;
+            let dz = (Math.random() - 0.5) * 0.08;
+            let pos = {x: nucleonBasePositions[i].x + dx, y: nucleonBasePositions[i].y + dy, z: nucleonBasePositions[i].z + dz};
+            let nucleonShape = viewer.addSphere({ center: pos, radius: nucleonRadius, color: nucleonColors[i], alpha: 0.8 });
+            nucleonShapes.push(nucleonShape);
+          }
+        }
+        // else keep existing nucleons
+      }
+
+      viewer.render();
+    }
+
+    // Animation loop using requestAnimationFrame for smoother performance
+    function animate() {
+      theta += 0.03; // Slightly slower speed for less CPU load
+      frameCount++;
+      renderScene();
+      requestAnimationFrame(animate);
+    }
+
+    // Event listeners for toggles
+    const toggles = ["showLabels", "showOrbit", "showNucleons"];
+    toggles.forEach(id => {
+      document.getElementById(id).addEventListener("change", () => {
+        buildStatic();
+        renderScene(); // Re-add dynamic elements immediately
+      });
+    });
+
+    // Initial setup
+    buildStatic();
+    viewer.zoomTo();
+    animate();
+  </script>
+</body>
+</html>
