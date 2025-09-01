@@ -1,117 +1,196 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hydrogen Atom Masterclass</title>
-<script src="https://3Dmol.org/build/3Dmol-min.js"></script>
-<style>
-body {margin:0;padding:0;overflow:hidden;font-family:sans-serif;background:#000;color:white;}
-#viewer{position:absolute;top:0;left:0;width:100%;height:calc(100% - 300px);}
-#info{position:absolute;bottom:0;left:0;width:100%;height:300px;background:rgba(34,34,34,0.8);color:white;padding:20px;box-sizing:border-box;overflow-y:auto;box-shadow:0 -5px 15px rgba(0,0,0,0.5);}
-.toggle{margin-right:15px;}
-h2{color:#ffd700;margin-top:0;}
-p{line-height:1.5;}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hydrogen Atom Masterclass</title>
+  <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
+  <!-- Google Fonts: Alsina as fallback -->
+  <link href="https://fonts.googleapis.com/css2?family=Alsina&display=swap" rel="stylesheet">
+  <style>
+    @font-face {
+      font-family: 'Alsina Ultrajada';
+      src: url('Alsina Ultrajada.ttf') format('truetype'); /* Assume font file is in the same directory; adjust path and format if needed */
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: 'Alsina Ultrajada', 'Alsina', sans-serif; /* Use local font if available, fallback to Google Alsina */
+      background: #000000;
+      color: white;
+    }
+    #viewer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: calc(100% - 300px); /* Increased space for info */
+    }
+    #info {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 300px;
+      background: rgba(34, 34, 34, 0.8); /* Semi-transparent for beauty */
+      color: white;
+      padding: 20px;
+      box-sizing: border-box;
+      font-size: 16px;
+      overflow-y: auto; /* Scrollable for dense info */
+      box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.5);
+    }
+    .toggle {
+      margin-right: 15px;
+    }
+    h2 {
+      color: #ffd700; /* Gold for headings */
+      margin-top: 0;
+    }
+    p {
+      line-height: 1.5;
+    }
+  </style>
 </head>
 <body>
-<div id="viewer"></div>
-<div id="info">
-<div>
-<label class="toggle"><input type="checkbox" id="showLabels" checked> Show Labels</label>
-<label class="toggle"><input type="checkbox" id="showOrbit" checked> Show Orbit</label>
-<label class="toggle"><input type="checkbox" id="showQuarks"> Show Quarks</label>
-</div>
-<h2>Hydrogen Atom Masterclass</h2>
-<p><strong>Hydrogen (H)</strong> – The simplest and most abundant element in the universe...</p>
-</div>
+  <div id="viewer"></div>
 
-<script>
-const viewer = $3Dmol.createViewer("viewer",{backgroundColor:"black"});
+  <div id="info">
+    <div>
+      <label class="toggle"><input type="checkbox" id="showLabels" checked> Show Labels</label>
+      <label class="toggle"><input type="checkbox" id="showOrbit" checked> Show Orbit</label>
+      <label class="toggle"><input type="checkbox" id="showQuarks"> Show Quarks</label>
+    </div>
+    <h2>Hydrogen Atom Masterclass</h2>
+    <p><strong>Hydrogen (H)</strong> – The simplest and most abundant element in the universe, comprising approximately 75% of its mass and 90% of its atoms. With atomic number 1, it consists of one proton in the nucleus orbited by a single electron in its ground state, as depicted in the classic Bohr model visualization above.</p>
+    <p><strong>Atomic Structure:</strong> Hydrogen's atom is the lightest, with an atomic mass of about 1.008 u. The proton, positively charged, resides at the center, while the negatively charged electron orbits in a probabilistic manner, simplified here as a circular path for educational purposes. In reality, quantum mechanics describes the electron's position via wavefunctions, with the 1s orbital being spherical.</p>
+    <p><strong>Isotopes:</strong> Hydrogen has three naturally occurring isotopes: Protium (^1H, no neutrons, 99.98% abundance), Deuterium (^2H, one neutron, 0.0156%), and Tritium (^3H, two neutrons, radioactive, trace amounts). Deuterium is used in heavy water for nuclear reactors, and tritium in fusion research.</p>
+    <p><strong>Physical Properties:</strong> Colorless, odorless, tasteless diatomic gas (H₂) at standard conditions. Boiling point: -252.9°C, melting point: -259.2°C. Highly flammable, forms explosive mixtures with oxygen. Density: 0.08988 g/L (gas).</p>
+    <p><strong>Chemical Properties:</strong> Highly reactive, forms covalent bonds easily. Combines with oxygen to form water (H₂O), with halogens to form acids (e.g., HCl), and is essential in organic chemistry as hydrocarbons.</p>
+    <p><strong>History:</strong> Discovered by Henry Cavendish in 1766 as "inflammable air." Named by Antoine Lavoisier in 1783 from Greek "hydro" (water) and "genes" (forming). Robert Boyle produced it earlier in 1671, but Cavendish isolated it.</p>
+    <p><strong>Abundance and Production:</strong> Makes up 75% of universal mass, but on Earth, mostly bound in water and organics. Produced industrially via steam reforming of natural gas, electrolysis of water, or partial oxidation. Green hydrogen from renewables is key for sustainable energy.</p>
+    <p><strong>Uses:</strong> Ammonia synthesis (Haber-Bosch process) for fertilizers (55% of production), petroleum refining, methanol production, fuel cells for clean energy, rocket fuel (e.g., Space Shuttle), and potential in hydrogen economy for vehicles and power storage.</p>
+    <p><strong>Astrophysical Role:</strong> Powers stars through nuclear fusion: 4H → He + energy. In the Big Bang, hydrogen formed first. It's the main component of gas giants like Jupiter.</p>
+    <p><strong>Quantum Significance:</strong> The hydrogen atom is exactly solvable in quantum mechanics, leading to energy levels E_n = -13.6 eV / n². Spectral series: Lyman (UV), Balmer (visible), Paschen (IR). Rydberg formula describes transitions. Key to understanding atomic physics and spectroscopy.</p>
+    <p><strong>Biological Importance:</strong> Constitutes ~10% of human body mass, essential in water, proteins, DNA. pH scale based on hydrogen ion concentration.</p>
+    <p><strong>Fun Facts:</strong> Hydrogen is the only element without neutrons in its most common form. It can behave as a metal under extreme pressure (metallic hydrogen). The sun consumes 600 million tons of hydrogen per second. Liquid hydrogen is used in cryogenics.</p>
+  </div>
 
-// Static proton & orbit
-viewer.addSphere({center:{x:0,y:0,z:0}, radius:0.3, color:"red", alpha:0.6, wireframe:true});
-if(document.getElementById("showOrbit").checked){
-  const segments=50, points=[];
-  for(let i=0;i<=segments;i++){ let t=2*Math.PI*(i/segments); points.push({x:1.2*Math.cos(t),y:1.2*Math.sin(t),z:0}); }
-  viewer.addCurve({points,color:"#fff",linewidth:2});
-}
-if(document.getElementById("showLabels").checked){
-  viewer.addLabel("Proton",{position:{x:0,y:0.5,z:0},backgroundColor:"red",fontColor:"white",fontSize:14});
-}
+  <script>
+    let viewer = $3Dmol.createViewer("viewer", { backgroundColor: "black" });
 
-// Dynamic objects
-let electronTheta=0;
-let electronSphere=null;
-let electronLabel=null;
-let quarks=[], quarkSpheres=[], quarkLabels=[];
+    let electronShapeId = null;
+    let electronLabelId = null;
+    let theta = 0;
 
-// Initialize quarks
-function initQuarks(){
-  quarks=[], quarkSpheres=[], quarkLabels=[];
-  if(!document.getElementById("showQuarks").checked) return;
-  const qColors=["#ff0000","#00ff00","#0000ff"];
-  const qPositions=[{x:0.1,y:0.1,z:0},{x:-0.1,y:0.1,z:0},{x:0,y:-0.1,z:0}];
-  for(let i=0;i<3;i++){
-    quarks.push({x:qPositions[i].x,y:qPositions[i].y,z:qPositions[i].z,color:qColors[i]});
-  }
-}
+    // Function to add orbit path
+    function addOrbit(radius) {
+      const segments = 50; // Reduced segments for performance
+      const points = [];
+      for (let i = 0; i <= segments; i++) {
+        let theta = 2 * Math.PI * (i / segments);
+        points.push({x: radius * Math.cos(theta), y: radius * Math.sin(theta), z: 0});
+      }
+      return viewer.addCurve({ points: points, color: "#ffffff", linewidth: 3 });
+    }
 
-// Update & render dynamic shapes
-function renderDynamic(){
-  // Electron
-  electronTheta+=0.03;
-  const ex=1.2*Math.cos(electronTheta), ey=1.2*Math.sin(electronTheta);
-  if(electronSphere) viewer.removeShape(electronSphere);
-  electronSphere = viewer.addSphere({center:{x:ex,y:ey,z:0}, radius:0.15,color:"yellow"});
-  if(document.getElementById("showLabels").checked){
-    if(electronLabel) electronLabel.setPosition({x:ex+0.3,y:ey+0.3,z:0});
-    else electronLabel=viewer.addLabel("Electron",{position:{x:ex+0.3,y:ey+0.3,z:0},backgroundColor:"yellow",fontColor:"black",fontSize:12});
-  }
+    // Function to add quarks inside proton
+    function addQuarks() {
+      // Up quark 1 (red)
+      viewer.addSphere({ center: {x: 0.1, y: 0.1, z: 0}, radius: 0.1, color: "#ff0000", alpha: 0.8 });
+      // Up quark 2 (green)
+      viewer.addSphere({ center: {x: -0.1, y: 0.1, z: 0}, radius: 0.1, color: "#00ff00", alpha: 0.8 });
+      // Down quark (blue)
+      viewer.addSphere({ center: {x: 0, y: -0.1, z: 0}, radius: 0.1, color: "#0000ff", alpha: 0.8 });
+    }
 
-  // Quarks
-  quarkSpheres.forEach(s=>viewer.removeShape(s));
-  quarkSpheres=[];
-  quarkLabels.forEach(l=>l&&l.setPosition({x:0,y:0,z:0})); // hide temporarily
-  quarkLabels=[];
-  if(document.getElementById("showQuarks").checked){
-    quarks.forEach((q,i)=>{
-      q.x+=(Math.random()-0.5)*0.01;
-      q.y+=(Math.random()-0.5)*0.01;
-      q.z+=(Math.random()-0.5)*0.01;
-      quarkSpheres.push(viewer.addSphere({center:q,radius:0.1,color:q.color,alpha:0.8}));
-      if(document.getElementById("showLabels").checked){
-        quarkLabels.push(viewer.addLabel(q.color!="#0000ff"?"Up Quark":"Down Quark",{position:q,backgroundColor:q.color,fontColor:"white",fontSize:10}));
-      } else quarkLabels.push(null);
+    // Function to add static labels
+    function addStaticLabels() {
+      viewer.addLabel("Proton", {position: {x:0, y:0.5, z:0}, backgroundColor: "red", fontColor: "white", fontSize: 14});
+      if (document.getElementById("showQuarks").checked) {
+        viewer.addLabel("Up Quark", {position: {x:0.1, y:0.3, z:0}, backgroundColor: "green", fontColor: "white", fontSize: 10});
+        viewer.addLabel("Up Quark", {position: {x: -0.1, y:0.3, z:0}, backgroundColor: "green", fontColor: "white", fontSize: 10});
+        viewer.addLabel("Down Quark", {position: {x:0, y:-0.05, z:0}, backgroundColor: "blue", fontColor: "white", fontSize: 10});
+      }
+    }
+
+    // Build static elements
+    function buildStatic() {
+      viewer.removeAllShapes();
+      viewer.removeAllLabels();
+      electronShapeId = null;
+      electronLabelId = null;
+
+      // Add proton (semi-transparent for quarks visibility)
+      viewer.addSphere({ center: {x:0, y:0, z:0}, radius: 0.3, color: "red", alpha: 0.6, wireframe: true });
+
+      // Add orbit if checked
+      if (document.getElementById("showOrbit").checked) {
+        addOrbit(1.2);
+      }
+
+      // Add quarks if checked
+      if (document.getElementById("showQuarks").checked) {
+        addQuarks();
+      }
+
+      // Add static labels if checked
+      if (document.getElementById("showLabels").checked) {
+        addStaticLabels();
+      }
+
+      viewer.render();
+    }
+
+    // Main render function for dynamic elements (electron)
+    function renderScene() {
+      // Remove old electron
+      if (electronShapeId !== null) {
+        viewer.removeShape(electronShapeId);
+      }
+      // Remove old electron label
+      if (electronLabelId !== null) {
+        viewer.removeLabel(electronLabelId);
+      }
+
+      // Calculate electron position
+      let ex = 1.2 * Math.cos(theta);
+      let ey = 1.2 * Math.sin(theta);
+
+      // Add electron and store its ID
+      const electronShape = viewer.addSphere({ center: {x: ex, y: ey, z: 0}, radius: 0.15, color: "yellow" });
+      electronShapeId = electronShape.shapeid;
+
+      // Add electron label if labels are shown and store its ID
+      if (document.getElementById("showLabels").checked) {
+        const electronLabel = viewer.addLabel("Electron", {position: {x: ex + 0.3, y: ey + 0.3, z:0}, backgroundColor: "yellow", fontColor: "black", fontSize: 12});
+        electronLabelId = electronLabel;
+      }
+
+      viewer.render();
+    }
+
+    // Animation loop using requestAnimationFrame for smoother performance
+    function animate() {
+      theta += 0.03; // Slightly slower speed for less CPU load
+      renderScene();
+      requestAnimationFrame(animate);
+    }
+
+    // Event listeners for toggles
+    const toggles = ["showLabels", "showOrbit", "showQuarks"];
+    toggles.forEach(id => {
+      document.getElementById(id).addEventListener("change", () => {
+        buildStatic();
+        renderScene(); // Re-add electron immediately
+      });
     });
-  }
 
-  viewer.render();
-  requestAnimationFrame(renderDynamic);
-}
-
-// Toggle handlers
-["showLabels","showOrbit","showQuarks"].forEach(id=>{
-  document.getElementById(id).addEventListener("change", ()=>{
-    viewer.removeAllShapes();
-    // rebuild proton & orbit
-    viewer.addSphere({center:{x:0,y:0,z:0}, radius:0.3, color:"red", alpha:0.6, wireframe:true});
-    if(document.getElementById("showOrbit").checked){
-      const segments=50, points=[];
-      for(let i=0;i<=segments;i++){ let t=2*Math.PI*(i/segments); points.push({x:1.2*Math.cos(t),y:1.2*Math.sin(t),z:0}); }
-      viewer.addCurve({points,color:"#fff",linewidth:2});
-    }
-    if(document.getElementById("showLabels").checked){
-      viewer.addLabel("Proton",{position:{x:0,y:0.5,z:0},backgroundColor:"red",fontColor:"white",fontSize:14});
-    }
-    initQuarks();
-  });
-});
-
-// Init
-initQuarks();
-renderDynamic();
-viewer.zoomTo();
-</script>
+    // Initial setup
+    buildStatic();
+    viewer.zoomTo();
+    animate();
+  </script>
 </body>
 </html>
