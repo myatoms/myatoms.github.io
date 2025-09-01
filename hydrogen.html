@@ -2,96 +2,141 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Hydrogen - My Atoms</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hydrogen Atom Masterclass</title>
   <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
-  <!-- Google Fonts: Alsina -->
-  <link href="https://fonts.googleapis.com/css2?family=Alsina&display=swap" rel="stylesheet">
   <style>
     body {
       margin: 0;
       padding: 0;
       overflow: hidden;
-      font-family: 'Alsina', sans-serif;
-      background: #000000; /* pure black */
+      font-family: sans-serif;
+      background: #000;
       color: white;
     }
-    #viewer {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: calc(100% - 120px);
-    }
+    #viewer { position: absolute; top:0; left:0; width:100%; height:calc(100% - 300px); }
     #info {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      height: 120px;
-      background: #222;
-      color: white;
-      padding: 10px;
-      box-sizing: border-box;
-      font-size: 16px;
+      position:absolute; bottom:0; left:0; width:100%; height:300px;
+      background: rgba(34,34,34,0.8); color:white; padding:20px; box-sizing:border-box;
+      overflow-y:auto; box-shadow:0 -5px 15px rgba(0,0,0,0.5);
     }
-    .toggle {
-      margin-right: 10px;
-    }
+    .toggle { margin-right: 15px; }
+    h2 { color: #ffd700; margin-top:0; }
+    p { line-height:1.5; }
   </style>
 </head>
 <body>
   <div id="viewer"></div>
-
   <div id="info">
-    <label class="toggle"><input type="checkbox" id="showLabels" checked> Show Labels</label>
-    <p><strong>Hydrogen (H)</strong> – description goes here.</p>
+    <div>
+      <label class="toggle"><input type="checkbox" id="showLabels" checked> Show Labels</label>
+      <label class="toggle"><input type="checkbox" id="showOrbit" checked> Show Orbit</label>
+      <label class="toggle"><input type="checkbox" id="showQuarks"> Show Quarks</label>
+    </div>
+    <h2>Hydrogen Atom Masterclass</h2>
+    <p><strong>Hydrogen (H)</strong> – The simplest and most abundant element in the universe...</p>
+    <!-- Keep all your info content -->
   </div>
 
   <script>
     let viewer = $3Dmol.createViewer("viewer", { backgroundColor: "black" });
 
-    // Proton (red, center)
-    viewer.addSphere({
-      center: {x:0, y:0, z:0},
-      radius: 0.3,
-      color: "red"
-    });
+    let electron = null;
+    let electronLabel = null;
+    let quarks = [];
+    let quarkLabels = [];
+    let theta = 0;
 
-    // Electron (yellow, orbiting)
-    viewer.addSphere({
-      center: {x:1, y:0, z:0},
-      radius: 0.15,
-      color: "yellow"
-    });
-
-    // Orbit path
     function addOrbit(radius) {
-      const segments = 100;
+      const segments = 50;
       const points = [];
-      for (let i=0; i<=segments; i++) {
-        let theta = 2 * Math.PI * (i / segments);
-        points.push({x: radius * Math.cos(theta), y: radius * Math.sin(theta), z: 0});
+      for (let i=0;i<=segments;i++){
+        let t = 2*Math.PI*(i/segments);
+        points.push({x:radius*Math.cos(t), y:radius*Math.sin(t), z:0});
       }
-      viewer.addCurve({ points: points, color: "white", linewidth: 2 });
+      return viewer.addCurve({ points, color:"#ffffff", linewidth:3 });
     }
-    addOrbit(1);
 
-    // Labels
-    function addLabels() {
-      viewer.addLabel("Proton", {position: {x:0, y:0.5, z:0}, backgroundColor: "red", fontColor: "black"});
-      viewer.addLabel("Electron", {position: {x:1, y:0.3, z:0}, backgroundColor: "yellow", fontColor: "black"});
+    function addQuarks() {
+      quarks = [
+        { color:"#ff0000", pos:{x:0.1,y:0.1,z:0} },
+        { color:"#00ff00", pos:{x:-0.1,y:0.1,z:0} },
+        { color:"#0000ff", pos:{x:0,y:-0.1,z:0} }
+      ];
+      quarkLabels = [];
+      quarks.forEach(q=>{
+        viewer.addSphere({ center:q.pos, radius:0.1, color:q.color, alpha:0.8 });
+        if(document.getElementById("showLabels").checked){
+          quarkLabels.push(viewer.addLabel(
+            q.color=="#ff0000"?"Up Quark":q.color=="#00ff00"?"Up Quark":"Down Quark",
+            { position:q.pos, backgroundColor:q.color, fontColor:"white", fontSize:10 }
+          ));
+        }
+      });
     }
-    addLabels();
 
-    // Toggle labels
-    document.getElementById("showLabels").addEventListener("change", (e) => {
+    function buildStatic() {
+      viewer.removeAllShapes();
       viewer.removeAllLabels();
-      if (e.target.checked) addLabels();
+
+      // Proton
+      viewer.addSphere({ center:{x:0,y:0,z:0}, radius:0.3, color:"red", alpha:0.6, wireframe:true });
+
+      // Orbit
+      if(document.getElementById("showOrbit").checked) addOrbit(1.2);
+
+      // Quarks
+      if(document.getElementById("showQuarks").checked) addQuarks();
+
+      // Labels
+      if(document.getElementById("showLabels").checked){
+        viewer.addLabel("Proton", {position:{x:0,y:0.5,z:0}, backgroundColor:"red", fontColor:"white", fontSize:14});
+      }
+
+      // Electron (static init)
+      if(!electron) {
+        electron = viewer.addSphere({ center:{x:1.2,y:0,z:0}, radius:0.15, color:"yellow" });
+      }
+      if(!electronLabel && document.getElementById("showLabels").checked) {
+        electronLabel = viewer.addLabel("Electron", {position:{x:1.5,y:0.3,z:0}, backgroundColor:"yellow", fontColor:"black", fontSize:12});
+      }
+
       viewer.render();
+    }
+
+    function animate() {
+      theta += 0.03;
+
+      // Electron motion
+      let ex = 1.2*Math.cos(theta);
+      let ey = 1.2*Math.sin(theta);
+      electron.setCenter({x:ex,y:ey,z:0});
+      if(electronLabel) electronLabel.setPosition({x:ex+0.3,y:ey+0.3,z:0});
+
+      // Quark random jiggle
+      if(document.getElementById("showQuarks").checked){
+        quarks.forEach((q,i)=>{
+          q.pos.x += (Math.random()-0.5)*0.02;
+          q.pos.y += (Math.random()-0.5)*0.02;
+          q.pos.z += (Math.random()-0.5)*0.02;
+          viewer.shapes[i+1].setCenter(q.pos); // +1 because proton is first shape
+          if(quarkLabels[i]) quarkLabels[i].setPosition(q.pos);
+        });
+      }
+
+      viewer.render();
+      requestAnimationFrame(animate);
+    }
+
+    ["showLabels","showOrbit","showQuarks"].forEach(id=>{
+      document.getElementById(id).addEventListener("change", ()=>{
+        buildStatic();
+      });
     });
 
+    buildStatic();
     viewer.zoomTo();
-    viewer.render();
+    animate();
   </script>
 </body>
 </html>
